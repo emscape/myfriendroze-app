@@ -1,0 +1,20 @@
+# Working notes (per CLAUDE.md — not user-facing)
+docs/
+
+# Secrets — never commit
+secrets/
+*serviceAccountKey.json
+*-service-account.json
+
+# Firebase client config (regenerate per-environment instead of committing)
+**/google-services.json
+**/GoogleService-Info.plist
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log
+.env
+.env.local

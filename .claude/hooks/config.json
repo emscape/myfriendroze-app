@@ -1,0 +1,84 @@
+{
+  "_readme": "Hook configuration for myfriendroze Flutter admin app. See .claude/hooks/README.md for full documentation.",
+
+  "project_name": "myfriendroze-app",
+
+  "session_start": {
+    "custom_notes": [
+      "Flutter project root is myfriendroze-app/myfriendroze-app/ — run flutter commands from there",
+      "Run in Chrome for web dev: flutter run -d chrome",
+      "Run on Android: flutter run -d android (or specific device ID)",
+      "Firebase config is in lib/firebase_options.dart (project: myfriendroze-platform)",
+      "Auth: Firebase email/password only. Admin accounts are manually created in Firebase Console.",
+      "Data flow: Flutter app writes to Firestore → Astro web site reads at build time"
+    ]
+  },
+
+  "arch_rules": {
+    "enabled": false,
+    "rules": []
+  },
+
+  "content_watch": {
+    "enabled": false,
+    "path_pattern": "myfriendroze-app/lib",
+    "file_extensions": [".dart"],
+    "validate_command": ""
+  },
+
+  "bash_description_guard": {
+    "enabled": true
+  },
+
+  "env_guard": {
+    "enabled": true
+  },
+
+  "push_audit": {
+    "enabled": true
+  },
+
+  "dep_guard": {
+    "enabled": true,
+    "warn_patterns": [
+      "flutter pub add",
+      "dart pub add",
+      "npm install",
+      "npm i "
+    ],
+    "custom_message": "Remember to commit pubspec.lock alongside any dependency changes."
+  },
+
+  "empty_test_guard": {
+    "enabled": true,
+    "test_file_patterns": ["*_test.dart"],
+    "block_empty_describe": false,
+    "block_empty_it": false,
+    "block_todo_tests": false
+  },
+
+  "todo_format": {
+    "enabled": false,
+    "required_pattern": "TODO\\([^)]+\\):",
+    "on_violation": "warn"
+  },
+
+  "script_guard": {
+    "enabled": false,
+    "package_json_paths": [],
+    "on_missing": "warn"
+  },
+
+  "commit_guard": {
+    "enabled": true,
+    "required_markers": ["WHY:", "EXPECTED:"],
+    "on_violation": "warn"
+  },
+
+  "commands": {
+    "lint": "cd myfriendroze-app/myfriendroze-app && flutter analyze",
+    "test": "cd myfriendroze-app/myfriendroze-app && flutter test",
+    "typecheck": "cd myfriendroze-app/myfriendroze-app && flutter analyze",
+    "build": "cd myfriendroze-app/myfriendroze-app && flutter build web"
+  }
+}
