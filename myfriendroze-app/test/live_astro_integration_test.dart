@@ -1,3 +1,10 @@
+// Tagged 'live' so `flutter test --exclude-tags=live` (used in CI) skips
+// this file — it makes real network calls to a locally running Astro dev
+// server / Firebase emulator and can't pass unattended. Run it manually
+// (`flutter test --tags=live`) with that infrastructure up first.
+@Tags(['live'])
+library;
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';

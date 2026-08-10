@@ -244,12 +244,6 @@ void main() {
 
     group('Sync Statistics', () {
       test('should return sync stats when available', () async {
-        final mockStats = {
-          'totalProducts': 10,
-          'lastSync': '2024-01-01T12:00:00Z',
-          'successRate': 95,
-        };
-
         when(mockHttpClient.get(
           any,
           headers: anyNamed('headers'),

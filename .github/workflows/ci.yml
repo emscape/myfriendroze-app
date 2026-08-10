@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  flutter:
+    name: Analyze & test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        # The git repo root and the Flutter project root are different
+        # directories in this repo — see CLAUDE.md's "Platform" section.
+        working-directory: myfriendroze-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - name: Static analysis
+        # --no-fatal-infos: 27 pre-existing info-level hints (deprecated
+        # withOpacity, avoid_print in test files, etc.) are style debt, not
+        # correctness bugs — tracked separately, not a merge blocker here.
+        # Real errors and warnings still fail this step.
+        run: flutter analyze --no-fatal-infos
+
+      - name: Tests
+        # live_astro_integration_test.dart is tagged 'live' and excluded here
+        # — it needs a locally running Astro dev server / Firebase emulator
+        # and can't pass unattended in CI. Run it manually with that
+        # infrastructure up: flutter test --tags=live
+        run: flutter test --exclude-tags=live
