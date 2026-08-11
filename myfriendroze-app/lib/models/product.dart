@@ -35,6 +35,9 @@ class Product {
   final String description;
   final double price;
   final double weight;
+  final double heightIn;
+  final double widthIn;
+  final double depthIn;
   final List<String> imageUrls;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -49,6 +52,9 @@ class Product {
     required this.description,
     required this.price,
     required this.weight,
+    this.heightIn = 0.0,
+    this.widthIn = 0.0,
+    this.depthIn = 0.0,
     required this.imageUrls,
     required this.createdAt,
     required this.updatedAt,
@@ -82,6 +88,10 @@ class Product {
       description: data['description'] ?? '',
       price: (data['price'] ?? 0.0).toDouble(),
       weight: (data['weight'] ?? 0.0).toDouble(),
+      // Existing products predate this feature and won't have these fields.
+      heightIn: (data['heightIn'] ?? 0.0).toDouble(),
+      widthIn: (data['widthIn'] ?? 0.0).toDouble(),
+      depthIn: (data['depthIn'] ?? 0.0).toDouble(),
       imageUrls: imageUrls,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
@@ -98,6 +108,9 @@ class Product {
       'description': description,
       'price': price,
       'weight': weight,
+      'heightIn': heightIn,
+      'widthIn': widthIn,
+      'depthIn': depthIn,
       'imageUrls': imageUrls,
       // Keep imageUrl for backwards compatibility
       'imageUrl': imageUrl,
@@ -124,6 +137,9 @@ class Product {
     String? description,
     double? price,
     double? weight,
+    double? heightIn,
+    double? widthIn,
+    double? depthIn,
     List<String>? imageUrls,
     String? imageUrl, // backwards compatibility
     DateTime? createdAt,
@@ -146,6 +162,9 @@ class Product {
       description: description ?? this.description,
       price: price ?? this.price,
       weight: weight ?? this.weight,
+      heightIn: heightIn ?? this.heightIn,
+      widthIn: widthIn ?? this.widthIn,
+      depthIn: depthIn ?? this.depthIn,
       imageUrls: finalImageUrls,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

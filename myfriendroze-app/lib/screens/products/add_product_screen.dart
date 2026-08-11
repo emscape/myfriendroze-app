@@ -9,6 +9,7 @@ import '../../providers/product_provider.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../widgets/multiple_image_picker.dart';
 import '../../models/product.dart';
+import '../../utils/unit_conversions.dart';
 
 class AddProductScreen extends StatefulWidget {
   final Product? productToEdit;
@@ -24,7 +25,11 @@ class _AddProductScreenState extends State<AddProductScreen> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _priceController = TextEditingController();
-  final _weightController = TextEditingController();
+  final _weightLbsController = TextEditingController();
+  final _weightOzController = TextEditingController();
+  final _heightController = TextEditingController();
+  final _widthController = TextEditingController();
+  final _depthController = TextEditingController();
 
   List<File>? _selectedImages;
   List<Uint8List>? _selectedImageBytes;
@@ -45,7 +50,18 @@ class _AddProductScreenState extends State<AddProductScreen> {
       _titleController.text = product.title;
       _descriptionController.text = product.description;
       _priceController.text = product.price.toString();
-      _weightController.text = product.weight.toString();
+      final weightLbsOz = gramsToLbsOz(product.weight);
+      _weightLbsController.text = weightLbsOz.lbs.toString();
+      _weightOzController.text = weightLbsOz.oz.toString();
+      if (product.heightIn > 0) {
+        _heightController.text = product.heightIn.toString();
+      }
+      if (product.widthIn > 0) {
+        _widthController.text = product.widthIn.toString();
+      }
+      if (product.depthIn > 0) {
+        _depthController.text = product.depthIn.toString();
+      }
       // Note: image is not preloaded into _selectedImage; keep using existing URL unless replaced
     }
   }
@@ -55,7 +71,11 @@ class _AddProductScreenState extends State<AddProductScreen> {
     _titleController.dispose();
     _descriptionController.dispose();
     _priceController.dispose();
-    _weightController.dispose();
+    _weightLbsController.dispose();
+    _weightOzController.dispose();
+    _heightController.dispose();
+    _widthController.dispose();
+    _depthController.dispose();
     super.dispose();
   }
 
@@ -89,6 +109,22 @@ class _AddProductScreenState extends State<AddProductScreen> {
     });
   }
 
+  /// Dimension fields are optional (existing products predate them), so a
+  /// blank entry is treated as "not measured" rather than a validation error.
+  double _parseOptionalDouble(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return 0.0;
+    return double.tryParse(trimmed) ?? 0.0;
+  }
+
+  String? _validateOptionalPositive(String? value) {
+    if (value == null || value.trim().isEmpty) return null;
+    final parsed = double.tryParse(value.trim());
+    if (parsed == null) return 'Invalid number';
+    if (parsed <= 0) return 'Must be positive';
+    return null;
+  }
+
   Future<void> _handleSubmit() async {
     if (_formKey.currentState!.validate()) {
       final productProvider =
@@ -111,7 +147,16 @@ class _AddProductScreenState extends State<AddProductScreen> {
       final title = _titleController.text.trim();
       final description = _descriptionController.text.trim();
       final price = double.parse(_priceController.text);
-      final weight = double.parse(_weightController.text);
+
+      final lbsText = _weightLbsController.text.trim();
+      final ozText = _weightOzController.text.trim();
+      final lbs = lbsText.isEmpty ? 0.0 : double.parse(lbsText);
+      final oz = ozText.isEmpty ? 0.0 : double.parse(ozText);
+      final weight = lbsOzToGrams(lbs, oz);
+
+      final heightIn = _parseOptionalDouble(_heightController.text);
+      final widthIn = _parseOptionalDouble(_widthController.text);
+      final depthIn = _parseOptionalDouble(_depthController.text);
 
       bool success = false;
 
@@ -122,6 +167,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
           description: description,
           price: price,
           weight: weight,
+          heightIn: heightIn,
+          widthIn: widthIn,
+          depthIn: depthIn,
           updatedAt: DateTime.now(),
         );
 
@@ -136,6 +184,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
           description: description,
           price: price,
           weight: weight,
+          heightIn: heightIn,
+          widthIn: widthIn,
+          depthIn: depthIn,
           imageFiles: _selectedImages,
           imageBytesList: _selectedImageBytes,
         );
@@ -228,24 +279,51 @@ class _AddProductScreenState extends State<AddProductScreen> {
                 ),
               const SizedBox(height: 16),
 
-              // Price and weight row
+              // Price
+              CustomTextField(
+                controller: _priceController,
+                labelText: 'Price (\$)',
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Enter price';
+                  }
+                  if (double.tryParse(value) == null) {
+                    return 'Invalid price';
+                  }
+                  if (double.parse(value) <= 0) {
+                    return 'Price must be positive';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // Weight row (lbs + oz)
               Row(
                 children: [
                   Expanded(
                     child: CustomTextField(
-                      controller: _priceController,
-                      labelText: 'Price (\$)',
+                      controller: _weightLbsController,
+                      labelText: 'Weight (lbs)',
                       keyboardType:
                           const TextInputType.numberWithOptions(decimal: true),
                       validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Enter price';
+                        final lbsText = value?.trim() ?? '';
+                        final ozText = _weightOzController.text.trim();
+                        final lbs =
+                            lbsText.isEmpty ? 0.0 : double.tryParse(lbsText);
+                        if (lbs == null) {
+                          return 'Invalid';
                         }
-                        if (double.tryParse(value) == null) {
-                          return 'Invalid price';
+                        if (lbs < 0) {
+                          return 'Must be 0 or more';
                         }
-                        if (double.parse(value) <= 0) {
-                          return 'Price must be positive';
+                        final oz =
+                            ozText.isEmpty ? 0.0 : double.tryParse(ozText);
+                        if (oz != null && lbs <= 0 && oz <= 0) {
+                          return 'Enter a weight';
                         }
                         return null;
                       },
@@ -254,22 +332,64 @@ class _AddProductScreenState extends State<AddProductScreen> {
                   const SizedBox(width: 16),
                   Expanded(
                     child: CustomTextField(
-                      controller: _weightController,
-                      labelText: 'Weight (g)',
+                      controller: _weightOzController,
+                      labelText: 'Weight (oz)',
                       keyboardType:
                           const TextInputType.numberWithOptions(decimal: true),
                       validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Enter weight';
+                        final ozText = value?.trim() ?? '';
+                        final lbsText = _weightLbsController.text.trim();
+                        final oz =
+                            ozText.isEmpty ? 0.0 : double.tryParse(ozText);
+                        if (oz == null) {
+                          return 'Invalid';
                         }
-                        if (double.tryParse(value) == null) {
-                          return 'Invalid weight';
+                        if (oz < 0 || oz >= 16) {
+                          return '0-15 (use lbs for 16+)';
                         }
-                        if (double.parse(value) <= 0) {
-                          return 'Weight must be positive';
+                        final lbs =
+                            lbsText.isEmpty ? 0.0 : double.tryParse(lbsText);
+                        if (lbs != null && lbs <= 0 && oz <= 0) {
+                          return 'Enter a weight';
                         }
                         return null;
                       },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Dimensions row (height/width/depth, inches — optional)
+              Row(
+                children: [
+                  Expanded(
+                    child: CustomTextField(
+                      controller: _heightController,
+                      labelText: 'Height (in)',
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      validator: _validateOptionalPositive,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: CustomTextField(
+                      controller: _widthController,
+                      labelText: 'Width (in)',
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      validator: _validateOptionalPositive,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: CustomTextField(
+                      controller: _depthController,
+                      labelText: 'Depth (in)',
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      validator: _validateOptionalPositive,
                     ),
                   ),
                 ],
