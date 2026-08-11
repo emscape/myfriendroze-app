@@ -1,3 +1,10 @@
+// Tagged 'live' so `flutter test --exclude-tags=live` (used in CI) skips
+// this file — same reason as live_astro_integration_test.dart: it makes
+// real HTTP calls to a locally running Astro dev server and can't pass
+// unattended. Run manually (`flutter test --tags=live`) with that server up.
+@Tags(['live'])
+library;
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';

@@ -40,6 +40,12 @@
           { "type": "command", "command": "node .claude/hooks/check-empty-tests.js" },
           { "type": "command", "command": "node .claude/hooks/check-todo-format.js" }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "node .claude/hooks/check-ci-status-after-push.js" }
+        ]
       }
     ]
   }
