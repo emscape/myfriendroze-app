@@ -1,11 +1,11 @@
 {
-    "name": "myfriendroze_admin",
-    "short_name": "myfriendroze_admin",
+    "name": "myfriendroze Admin",
+    "short_name": "roze admin",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Admin tool for managing myfriendroze products, events, and gallery photos.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

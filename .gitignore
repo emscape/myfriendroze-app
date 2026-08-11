@@ -10,6 +10,13 @@ secrets/
 **/google-services.json
 **/GoogleService-Info.plist
 
+# Firebase CLI local deploy cache (added once Hosting was wired up for the
+# admin web app — see admin-app-web-hosting memory)
+.firebase/
+
+# Flutter web build output (regenerated via `flutter build web`)
+**/build/
+
 # OS / editor
 .DS_Store
 Thumbs.db
