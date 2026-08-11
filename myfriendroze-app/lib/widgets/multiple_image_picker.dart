@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
+enum _ImageSourceChoice { camera, library }
+
 class MultipleImagePicker extends StatefulWidget {
   final List<String> initialImageUrls;
   final Function(List<File>?, List<Uint8List>?) onImagesChanged;
@@ -36,13 +38,30 @@ class _MultipleImagePickerState extends State<MultipleImagePicker> {
   }
 
   Future<void> _pickImages() async {
+    final source = await _chooseSource();
+    if (source == null) return; // dismissed
+
     try {
-      // Use pickMultiImage for true multiple selection
-      final List<XFile> images = await _imagePicker.pickMultiImage(
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 85,
-      );
+      final List<XFile> images;
+      if (source == _ImageSourceChoice.camera) {
+        // Single shot only — a multi-select file input (the `multiple`
+        // attribute pickMultiImage() sets on web) makes iOS Safari drop the
+        // camera option entirely, since you can't take several photos in
+        // one capture session. pickImage() avoids `multiple` altogether.
+        final XFile? image = await _imagePicker.pickImage(
+          source: ImageSource.camera,
+          maxWidth: 1024,
+          maxHeight: 1024,
+          imageQuality: 85,
+        );
+        images = image == null ? [] : [image];
+      } else {
+        images = await _imagePicker.pickMultiImage(
+          maxWidth: 1024,
+          maxHeight: 1024,
+          imageQuality: 85,
+        );
+      }
 
       if (images.isNotEmpty) {
         final int remainingSlots = widget.maxImages - _getTotalImageCount();
@@ -58,8 +77,9 @@ class _MultipleImagePickerState extends State<MultipleImagePicker> {
             _selectedBytes.addAll(newBytes);
           });
         } else {
-          final List<File> newFiles =
-              imagesToAdd.map((image) => File(image.path)).toList();
+          final List<File> newFiles = imagesToAdd
+              .map((image) => File(image.path))
+              .toList();
           setState(() {
             _selectedFiles.addAll(newFiles);
           });
@@ -70,6 +90,29 @@ class _MultipleImagePickerState extends State<MultipleImagePicker> {
     } catch (e) {
       debugPrint('Error picking images: $e');
     }
+  }
+
+  Future<_ImageSourceChoice?> _chooseSource() {
+    return showModalBottomSheet<_ImageSourceChoice>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera),
+              title: const Text('Take Photo'),
+              onTap: () => Navigator.pop(context, _ImageSourceChoice.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Choose from Library'),
+              onTap: () => Navigator.pop(context, _ImageSourceChoice.library),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _removeExistingImage(int index) {
@@ -175,8 +218,10 @@ class _MultipleImagePickerState extends State<MultipleImagePicker> {
     );
   }
 
-  Widget _buildImageCard(
-      {required Widget child, required VoidCallback onRemove}) {
+  Widget _buildImageCard({
+    required Widget child,
+    required VoidCallback onRemove,
+  }) {
     return Container(
       width: 100,
       height: 100,
@@ -185,11 +230,7 @@ class _MultipleImagePickerState extends State<MultipleImagePicker> {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: SizedBox(
-              width: 100,
-              height: 100,
-              child: child,
-            ),
+            child: SizedBox(width: 100, height: 100, child: child),
           ),
           Positioned(
             top: 4,
@@ -203,11 +244,7 @@ class _MultipleImagePickerState extends State<MultipleImagePicker> {
                   color: Colors.red,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
-                  Icons.close,
-                  color: Colors.white,
-                  size: 16,
-                ),
+                child: const Icon(Icons.close, color: Colors.white, size: 16),
               ),
             ),
           ),
