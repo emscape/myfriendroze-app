@@ -38,6 +38,12 @@ class Product {
   final double heightIn;
   final double widthIn;
   final double depthIn;
+  // The box the item actually ships in — independent of the item's own
+  // physical dimensions above, since fragile ceramics typically need a
+  // larger, padded box. Used for accurate shipping cost estimates.
+  final double shippingBoxHeightIn;
+  final double shippingBoxWidthIn;
+  final double shippingBoxDepthIn;
   final List<String> imageUrls;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -55,6 +61,9 @@ class Product {
     this.heightIn = 0.0,
     this.widthIn = 0.0,
     this.depthIn = 0.0,
+    this.shippingBoxHeightIn = 0.0,
+    this.shippingBoxWidthIn = 0.0,
+    this.shippingBoxDepthIn = 0.0,
     required this.imageUrls,
     required this.createdAt,
     required this.updatedAt,
@@ -92,6 +101,9 @@ class Product {
       heightIn: (data['heightIn'] ?? 0.0).toDouble(),
       widthIn: (data['widthIn'] ?? 0.0).toDouble(),
       depthIn: (data['depthIn'] ?? 0.0).toDouble(),
+      shippingBoxHeightIn: (data['shippingBoxHeightIn'] ?? 0.0).toDouble(),
+      shippingBoxWidthIn: (data['shippingBoxWidthIn'] ?? 0.0).toDouble(),
+      shippingBoxDepthIn: (data['shippingBoxDepthIn'] ?? 0.0).toDouble(),
       imageUrls: imageUrls,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
@@ -111,6 +123,9 @@ class Product {
       'heightIn': heightIn,
       'widthIn': widthIn,
       'depthIn': depthIn,
+      'shippingBoxHeightIn': shippingBoxHeightIn,
+      'shippingBoxWidthIn': shippingBoxWidthIn,
+      'shippingBoxDepthIn': shippingBoxDepthIn,
       'imageUrls': imageUrls,
       // Keep imageUrl for backwards compatibility
       'imageUrl': imageUrl,
@@ -140,6 +155,9 @@ class Product {
     double? heightIn,
     double? widthIn,
     double? depthIn,
+    double? shippingBoxHeightIn,
+    double? shippingBoxWidthIn,
+    double? shippingBoxDepthIn,
     List<String>? imageUrls,
     String? imageUrl, // backwards compatibility
     DateTime? createdAt,
@@ -165,6 +183,9 @@ class Product {
       heightIn: heightIn ?? this.heightIn,
       widthIn: widthIn ?? this.widthIn,
       depthIn: depthIn ?? this.depthIn,
+      shippingBoxHeightIn: shippingBoxHeightIn ?? this.shippingBoxHeightIn,
+      shippingBoxWidthIn: shippingBoxWidthIn ?? this.shippingBoxWidthIn,
+      shippingBoxDepthIn: shippingBoxDepthIn ?? this.shippingBoxDepthIn,
       imageUrls: finalImageUrls,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

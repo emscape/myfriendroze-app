@@ -30,6 +30,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
   final _heightController = TextEditingController();
   final _widthController = TextEditingController();
   final _depthController = TextEditingController();
+  final _shippingBoxHeightController = TextEditingController();
+  final _shippingBoxWidthController = TextEditingController();
+  final _shippingBoxDepthController = TextEditingController();
 
   List<File>? _selectedImages;
   List<Uint8List>? _selectedImageBytes;
@@ -62,6 +65,18 @@ class _AddProductScreenState extends State<AddProductScreen> {
       if (product.depthIn > 0) {
         _depthController.text = product.depthIn.toString();
       }
+      if (product.shippingBoxHeightIn > 0) {
+        _shippingBoxHeightController.text =
+            product.shippingBoxHeightIn.toString();
+      }
+      if (product.shippingBoxWidthIn > 0) {
+        _shippingBoxWidthController.text =
+            product.shippingBoxWidthIn.toString();
+      }
+      if (product.shippingBoxDepthIn > 0) {
+        _shippingBoxDepthController.text =
+            product.shippingBoxDepthIn.toString();
+      }
       // Note: image is not preloaded into _selectedImage; keep using existing URL unless replaced
     }
   }
@@ -76,6 +91,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
     _heightController.dispose();
     _widthController.dispose();
     _depthController.dispose();
+    _shippingBoxHeightController.dispose();
+    _shippingBoxWidthController.dispose();
+    _shippingBoxDepthController.dispose();
     super.dispose();
   }
 
@@ -157,6 +175,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
       final heightIn = _parseOptionalDouble(_heightController.text);
       final widthIn = _parseOptionalDouble(_widthController.text);
       final depthIn = _parseOptionalDouble(_depthController.text);
+      final shippingBoxHeightIn =
+          _parseOptionalDouble(_shippingBoxHeightController.text);
+      final shippingBoxWidthIn =
+          _parseOptionalDouble(_shippingBoxWidthController.text);
+      final shippingBoxDepthIn =
+          _parseOptionalDouble(_shippingBoxDepthController.text);
 
       bool success = false;
 
@@ -170,6 +194,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
           heightIn: heightIn,
           widthIn: widthIn,
           depthIn: depthIn,
+          shippingBoxHeightIn: shippingBoxHeightIn,
+          shippingBoxWidthIn: shippingBoxWidthIn,
+          shippingBoxDepthIn: shippingBoxDepthIn,
           updatedAt: DateTime.now(),
         );
 
@@ -187,6 +214,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
           heightIn: heightIn,
           widthIn: widthIn,
           depthIn: depthIn,
+          shippingBoxHeightIn: shippingBoxHeightIn,
+          shippingBoxWidthIn: shippingBoxWidthIn,
+          shippingBoxDepthIn: shippingBoxDepthIn,
           imageFiles: _selectedImages,
           imageBytesList: _selectedImageBytes,
         );
@@ -387,6 +417,54 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     child: CustomTextField(
                       controller: _depthController,
                       labelText: 'Depth (in)',
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      validator: _validateOptionalPositive,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Shipping box dimensions row (height/width/depth, inches —
+              // optional). Independent of the item's own dimensions above:
+              // fragile ceramics typically ship in a larger, padded box.
+              const Padding(
+                padding: EdgeInsets.only(bottom: 8),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Shipping box dimensions',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: CustomTextField(
+                      controller: _shippingBoxHeightController,
+                      labelText: 'Box height (in)',
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      validator: _validateOptionalPositive,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: CustomTextField(
+                      controller: _shippingBoxWidthController,
+                      labelText: 'Box width (in)',
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      validator: _validateOptionalPositive,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: CustomTextField(
+                      controller: _shippingBoxDepthController,
+                      labelText: 'Box depth (in)',
                       keyboardType:
                           const TextInputType.numberWithOptions(decimal: true),
                       validator: _validateOptionalPositive,

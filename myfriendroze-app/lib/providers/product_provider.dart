@@ -123,6 +123,9 @@ class ProductProvider extends ChangeNotifier {
     double heightIn = 0.0,
     double widthIn = 0.0,
     double depthIn = 0.0,
+    double shippingBoxHeightIn = 0.0,
+    double shippingBoxWidthIn = 0.0,
+    double shippingBoxDepthIn = 0.0,
     List<File>? imageFiles,
     List<Uint8List>? imageBytesList,
     // Backwards compatibility
@@ -164,18 +167,15 @@ class ProductProvider extends ChangeNotifier {
         heightIn: heightIn,
         widthIn: widthIn,
         depthIn: depthIn,
+        shippingBoxHeightIn: shippingBoxHeightIn,
+        shippingBoxWidthIn: shippingBoxWidthIn,
+        shippingBoxDepthIn: shippingBoxDepthIn,
         imageUrls: imageUrls,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
 
-      final productId = await FirestoreService.addProduct(product);
-
-      // Update product with the actual ID from Firestore
-      final savedProduct = product.copyWith(id: productId);
-
-      // Attempt to sync with Astro site
-      await _syncProductWithAstro(savedProduct);
+      await FirestoreService.addProduct(product);
 
       _setLoading(false);
       return true;
@@ -233,9 +233,6 @@ class ProductProvider extends ChangeNotifier {
 
       await FirestoreService.updateProduct(updatedProduct);
 
-      // Attempt to sync with Astro site
-      await _syncProductWithAstro(updatedProduct);
-
       _setLoading(false);
       return true;
     } catch (e) {
@@ -257,14 +254,6 @@ class ProductProvider extends ChangeNotifier {
 
       // Delete product from Firestore
       await FirestoreService.deleteProduct(product.id);
-
-      // Remove product from Astro site
-      try {
-        await _astroService.removeProduct(product.id);
-      } catch (e) {
-        // Log error but don't fail the deletion
-        debugPrint('Failed to remove product from Astro: $e');
-      }
 
       _setLoading(false);
       return true;
