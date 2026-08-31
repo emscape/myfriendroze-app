@@ -89,6 +89,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     autofillHints: const [AutofillHints.email],
                     textInputAction: TextInputAction.next,
                     enableVoice: true,
+                    autocorrect: false,
+                    enableSuggestions: false,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Please enter your email';

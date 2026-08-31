@@ -16,6 +16,13 @@ class CustomTextField extends StatefulWidget {
   final Iterable<String>? autofillHints;
   final TextInputAction? textInputAction;
   final bool enableVoice; // adds a mic icon and voice dictation
+  // Both default to Flutter's own TextFormField defaults (true), so existing
+  // callers are unaffected. Email fields should pass false for both — iOS
+  // Safari's predictive-text bar will otherwise autocorrect an address like
+  // "myfriendroze.store@gmail.com" into something like "my friend
+  // Roze.store@gmail.com" mid-typing.
+  final bool autocorrect;
+  final bool enableSuggestions;
 
   const CustomTextField({
     super.key,
@@ -33,6 +40,8 @@ class CustomTextField extends StatefulWidget {
     this.autofillHints,
     this.textInputAction,
     this.enableVoice = false,
+    this.autocorrect = true,
+    this.enableSuggestions = true,
   });
 
   @override
@@ -108,6 +117,8 @@ class _CustomTextFieldState extends State<CustomTextField> {
       enabled: widget.enabled,
       autofillHints: widget.autofillHints,
       textInputAction: widget.textInputAction,
+      autocorrect: widget.autocorrect,
+      enableSuggestions: widget.enableSuggestions,
       decoration: InputDecoration(
         labelText: widget.labelText,
         hintText: widget.hintText,

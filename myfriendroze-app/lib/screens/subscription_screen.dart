@@ -149,6 +149,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       ),
                     ),
                     keyboardType: TextInputType.emailAddress,
+                    autocorrect: false,
+                    enableSuggestions: false,
                     enabled: !subscriptionProvider.isLoading,
                   ),
                   const SizedBox(height: 16),
