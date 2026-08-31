@@ -9,8 +9,8 @@
 // restore their session correctly.
 //
 // This test simulates exactly that: a session restored via the auth-state
-// stream with no navigation event, and asserts the router leaves /login on
-// its own.
+// stream with no navigation event, and asserts the router redirects away
+// from /login to /home on its own.
 import 'dart:async';
 
 // `firebase_auth` exports its own unrelated `AuthProvider` class (the base
@@ -43,7 +43,7 @@ class MockUser extends Mock implements User {}
 
 void main() {
   testWidgets(
-    'restoring a persisted Firebase session (no navigation) leaves /login',
+    'restoring a persisted Firebase session (no navigation) redirects away from /login',
     (tester) async {
       // Broadcast so `close()` in tearDown completes immediately even if
       // this specific test never attaches a listener (a single-subscription

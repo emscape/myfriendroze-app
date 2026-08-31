@@ -46,9 +46,10 @@ void main() {
         ),
       );
 
-      // Email field is the first text field on the login screen. TextFormField
-      // itself doesn't expose autocorrect/enableSuggestions — it builds a
-      // TextField internally, which does.
+      // Email field is the first text field on the login screen. Reading the
+      // TextField that TextFormField builds internally (rather than the
+      // TextFormField widget itself) verifies the flags were actually
+      // forwarded through CustomTextField, not just accepted and dropped.
       final emailField = tester
           .widgetList<TextField>(find.byType(TextField))
           .first;
