@@ -4,14 +4,11 @@ import 'package:flutter/material.dart';
 import '../models/product.dart';
 import '../services/firestore_service.dart';
 import '../services/storage_service.dart';
-import '../services/astro_integration_service.dart';
 
 class ProductProvider extends ChangeNotifier {
   List<Product> _products = [];
   bool _isLoading = false;
   String? _errorMessage;
-  final AstroIntegrationService _astroService =
-      AstroIntegrationManager.instance;
 
   List<Product> get products => _products;
   bool get isLoading => _isLoading;
@@ -29,78 +26,6 @@ class ProductProvider extends ChangeNotifier {
 
   void clearError() {
     _setError(null);
-  }
-
-  /// Sync a product with Astro site
-  Future<void> _syncProductWithAstro(Product product) async {
-    try {
-      // Update product status to pending
-      final pendingProduct = product.copyWith(
-        syncStatus: ProductSyncStatus.pending,
-      );
-      await FirestoreService.updateProduct(pendingProduct);
-
-      // Attempt sync
-      final result = await _astroService.syncProduct(product);
-
-      // Update product with sync result
-      final updatedProduct = product.copyWith(
-        syncStatus: result.success
-            ? ProductSyncStatus.synced
-            : ProductSyncStatus.failed,
-        lastSyncAt: result.timestamp,
-        syncError: result.error,
-      );
-
-      await FirestoreService.updateProduct(updatedProduct);
-    } catch (e) {
-      // Update product with failed status
-      final failedProduct = product.copyWith(
-        syncStatus: ProductSyncStatus.failed,
-        lastSyncAt: DateTime.now(),
-        syncError: e.toString(),
-      );
-
-      await FirestoreService.updateProduct(failedProduct);
-    }
-  }
-
-  /// Manually sync a product with Astro site
-  Future<bool> syncProductWithAstro(Product product) async {
-    try {
-      _setLoading(true);
-      _setError(null);
-
-      await _syncProductWithAstro(product);
-
-      _setLoading(false);
-      return true;
-    } catch (e) {
-      _setLoading(false);
-      _setError('Failed to sync product: $e');
-      return false;
-    }
-  }
-
-  /// Sync all products with Astro site
-  Future<bool> syncAllProductsWithAstro() async {
-    try {
-      _setLoading(true);
-      _setError(null);
-
-      for (final product in _products) {
-        await _syncProductWithAstro(product);
-        // Small delay to avoid overwhelming the API
-        await Future.delayed(const Duration(milliseconds: 200));
-      }
-
-      _setLoading(false);
-      return true;
-    } catch (e) {
-      _setLoading(false);
-      _setError('Failed to sync products: $e');
-      return false;
-    }
   }
 
   void loadProducts() {
@@ -238,6 +163,32 @@ class ProductProvider extends ChangeNotifier {
     } catch (e) {
       _setLoading(false);
       _setError('Failed to update product: $e');
+      return false;
+    }
+  }
+
+  /// Marks a product in-stock/sold-out. Kept as its own entry point (rather
+  /// than routing sold-out toggles through the general updateProduct form
+  /// flow) since it's a one-tap admin action with no image/text changes to
+  /// make alongside it. Read by product-mapping.js's docToProduct on the
+  /// site and enforced at the checkout boundary in
+  /// firebase/functions/lib/pricing.js.
+  Future<bool> setInStock(Product product, bool inStock) async {
+    try {
+      _setLoading(true);
+      _setError(null);
+
+      final updated = product.copyWith(
+        inStock: inStock,
+        updatedAt: DateTime.now(),
+      );
+      await FirestoreService.updateProduct(updated);
+
+      _setLoading(false);
+      return true;
+    } catch (e) {
+      _setLoading(false);
+      _setError('Failed to update stock status: $e');
       return false;
     }
   }

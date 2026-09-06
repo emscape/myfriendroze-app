@@ -35,15 +35,6 @@ class ApiConfig {
       'Accept': 'application/json',
     },
   );
-
-  /// Astro site webhook configuration for product sync
-  static const ApiConfig astroWebhook = ApiConfig(
-    baseUrl: 'http://localhost:4321/api',
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    },
-  );
 }
 
 /// Custom exception for API errors
