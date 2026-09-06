@@ -93,4 +93,31 @@ void main() {
 
     expect(callCount, 1);
   });
+
+  testWidgets(
+      'button re-enables (not stuck disabled) if the refresh callback throws',
+      (tester) async {
+    await _pumpProfileScreen(
+      tester,
+      showRefreshButton: true,
+      onRefreshApp: () async => throw StateError('JS interop failure'),
+    );
+
+    // Real onRefreshApp implementations reload the page as their last
+    // step, so a thrown error means something earlier (getRegistrations,
+    // cache access) failed before ever reaching reload — the button must
+    // not stay stuck in the disabled/spinner state in that case.
+    await tester.tap(find.text('Refresh App'));
+    await tester.pumpAndSettle();
+
+    // find.byType(OutlinedButton) would find nothing here: the .icon()
+    // constructor returns a private OutlinedButton subclass, and byType
+    // matches exact runtime type, not `is`. byWidgetPredicate checks the
+    // actual type relationship instead.
+    final button = tester.widget(
+      find.byWidgetPredicate((widget) => widget is OutlinedButton),
+    ) as OutlinedButton;
+    expect(button.onPressed, isNotNull);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+  });
 }

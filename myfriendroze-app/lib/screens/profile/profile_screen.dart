@@ -122,12 +122,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ? null
                         : () async {
                             setState(() => _isRefreshing = true);
-                            await widget.onRefreshApp();
-                            // onRefreshApp reloads the page on real web —
-                            // this only still runs at all when a test fake
-                            // doesn't reload, so resetting state is safe.
-                            if (!mounted) return;
-                            setState(() => _isRefreshing = false);
+                            try {
+                              await widget.onRefreshApp();
+                            } catch (error) {
+                              // A real onRefreshApp reloads the page as its
+                              // last step — an error here means something
+                              // earlier (getRegistrations, cache access)
+                              // failed before ever reaching reload. Logged
+                              // rather than silently swallowed; the finally
+                              // below is what actually matters for the
+                              // user — don't leave the button stuck
+                              // disabled with no way to retry.
+                              debugPrint('[ProfileScreen] Refresh App failed: $error');
+                            } finally {
+                              // onRefreshApp reloads the page on real
+                              // success — this only still runs at all when
+                              // a test fake doesn't reload, or the call
+                              // failed above, so resetting state is safe
+                              // either way.
+                              if (mounted) {
+                                setState(() => _isRefreshing = false);
+                              }
+                            }
                           },
                     icon: _isRefreshing
                         ? const SizedBox(
