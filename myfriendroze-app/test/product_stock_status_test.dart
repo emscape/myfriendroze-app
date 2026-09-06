@@ -104,7 +104,10 @@ void main() {
       provider = ProductProvider();
     });
 
-    test('marks a product sold out without touching its other fields', () async {
+    test(
+        'marks a product sold out, leaving its content fields untouched '
+        '(updatedAt is expected to change — that is the point of the save)',
+        () async {
       final existing = Product(
         id: 'p1',
         title: 'Shino Wins',
@@ -123,6 +126,15 @@ void main() {
       final doc = await fakeFirestore.collection('products').doc('p1').get();
       expect(doc.data()!['inStock'], isFalse);
       expect(doc.data()!['title'], 'Shino Wins');
+      expect(doc.data()!['description'], 'One-off glaze test');
+      expect(doc.data()!['price'], 100);
+      expect(doc.data()!['weight'], 900);
+      // Deliberately does change — setInStock stamps a fresh save time,
+      // same as every other product update.
+      expect(
+        (doc.data()!['updatedAt'] as Timestamp).toDate().isAfter(DateTime(2026, 1, 1)),
+        isTrue,
+      );
     });
 
     test('marking a product back in stock reverses the flag', () async {
