@@ -177,11 +177,18 @@ Use `/test-driven-development` skill for RED→GREEN→COMMIT→REFACTOR cycle.
 cd myfriendroze-app/myfriendroze-app
 flutter run -d chrome
 
-# Build web
-flutter build web
+# Build web — pass the git commit count as the build number so the
+# Profile screen's version display actually changes on every real deploy
+# (see lib/screens/profile/profile_screen.dart). Without --build-number,
+# pubspec.yaml's own `+1` is used forever and every build looks identical.
+flutter build web --build-number=$(git rev-list --count HEAD)
 
-# Build Android APK
-flutter build apk
+# Build Android APK, same convention
+flutter build apk --build-number=$(git rev-list --count HEAD)
+
+# Deploy the web build (separate Hosting site from the main Astro site —
+# see admin-app-web-hosting memory)
+firebase deploy --only hosting --project myfriendroze-platform
 
 # Analyze for issues
 flutter analyze
@@ -192,3 +199,5 @@ flutter test
 
 Admin accounts must be created manually in the Firebase Console (Authentication → Add user).  
 The app writes to `myfriendroze-platform` Firestore — changes are reflected in the Astro website at next build.
+
+**Confirming a deploy actually shipped**: the Profile screen shows `Version <pubspec version> (<build number>)`. If the build number shown on a device/browser doesn't match `git rev-list --count HEAD` on the commit you just deployed, that device is running a stale build — rebuild and redeploy (web) or reinstall the APK (Android) before debugging further. This app has no CI/CD; every deploy is a manual `flutter build` + `firebase deploy` run from a human's machine, so "did the last fix actually reach the device" cannot be assumed — verify it.
