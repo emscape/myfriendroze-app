@@ -1,10 +1,42 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  // Was a hardcoded 'Version: 1.0.0' string — never reflected real
+  // releases no matter how many shipped. buildNumber is set from the git
+  // commit count at build time (see CLAUDE.md's Deployment section), so
+  // it visibly changes on every real deploy — useful for confirming a
+  // device/browser is actually running the build you think it is.
+  String _versionLabel = '';
+
+  @override
+  void initState() {
+    super.initState();
+    PackageInfo.fromPlatform().then((info) {
+      if (!mounted) return;
+      setState(() {
+        _versionLabel = 'Version ${info.version} (${info.buildNumber})';
+      });
+    }).catchError((Object error) {
+      // A platform-channel/plugin-init failure here shouldn't take the
+      // whole screen down (or fail silently forever) — surface a safe,
+      // static fallback instead of leaving _versionLabel blank.
+      if (!mounted) return;
+      setState(() {
+        _versionLabel = 'Version unavailable';
+      });
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,29 +92,29 @@ class ProfileScreen extends StatelessWidget {
                 const SizedBox(height: 24),
                 
                 // App info
-                const Card(
+                Card(
                   child: Padding(
-                    padding: EdgeInsets.all(16.0),
+                    padding: const EdgeInsets.all(16.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
+                        const Text(
                           'App Information',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        SizedBox(height: 12),
+                        const SizedBox(height: 12),
                         Row(
                           children: [
-                            Icon(Icons.info_outline, color: Colors.grey),
-                            SizedBox(width: 8),
-                            Text('Version: 1.0.0'),
+                            const Icon(Icons.info_outline, color: Colors.grey),
+                            const SizedBox(width: 8),
+                            Text(_versionLabel),
                           ],
                         ),
-                        SizedBox(height: 8),
-                        Row(
+                        const SizedBox(height: 8),
+                        const Row(
                           children: [
                             Icon(Icons.business, color: Colors.grey),
                             SizedBox(width: 8),

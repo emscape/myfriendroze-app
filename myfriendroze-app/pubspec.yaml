@@ -38,6 +38,7 @@ dependencies:
   intl: ^0.20.2
   json_annotation: ^4.9.0
   http: ^1.1.0
+  package_info_plus: ^8.1.2
   
   # Speech to text
   speech_to_text: ^7.3.0
@@ -52,6 +53,7 @@ dev_dependencies:
   mockito: ^5.4.0
   fake_cloud_firestore: ^4.1.0+1
   firebase_storage_mocks: ^0.8.1
+  package_info_plus_platform_interface: ^3.2.1
 
 flutter:
   uses-material-design: true
