@@ -27,6 +27,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() {
         _versionLabel = 'Version ${info.version} (${info.buildNumber})';
       });
+    }).catchError((Object error) {
+      // A platform-channel/plugin-init failure here shouldn't take the
+      // whole screen down (or fail silently forever) — surface a safe,
+      // static fallback instead of leaving _versionLabel blank.
+      if (!mounted) return;
+      setState(() {
+        _versionLabel = 'Version unavailable';
+      });
     });
   }
 
