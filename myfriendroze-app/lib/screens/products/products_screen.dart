@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../providers/product_provider.dart';
 import '../../models/product.dart';
-import '../../widgets/sync_status_indicator.dart';
 
 class ProductsScreen extends StatefulWidget {
   const ProductsScreen({super.key});
@@ -32,11 +31,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
           onPressed: () => context.go('/home'),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.sync),
-            onPressed: () => context.go('/products/sync'),
-            tooltip: 'Sync Management',
-          ),
           IconButton(
             icon: const Icon(Icons.add),
             onPressed: () => context.go('/products/add'),
@@ -96,15 +90,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
           return Column(
             children: [
-              // Sync status summary
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: SyncStatusSummary(
-                  products: productProvider.products,
-                  onSyncAll: () => productProvider.syncAllProductsWithAstro(),
-                  isLoading: productProvider.isLoading,
-                ),
-              ),
               // Products list
               Expanded(
                 child: ListView.builder(
@@ -230,17 +215,26 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  // Sync status indicator
-                  SyncStatusIndicator(
-                    status: product.syncStatus,
-                    lastSyncAt: product.lastSyncAt,
-                    error: product.syncError,
-                    compact: true,
-                    onRetry: product.syncStatus == ProductSyncStatus.failed
-                        ? () => provider.syncProductWithAstro(product)
-                        : null,
-                  ),
+                  if (!product.inStock) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.red[50],
+                        border: Border.all(color: Colors.red),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        'SOLD OUT',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -256,8 +250,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 } else if (value == 'edit') {
                   // Navigate to add/edit product screen with the product as extra
                   context.go('/products/add', extra: product);
-                } else if (value == 'sync') {
-                  provider.syncProductWithAstro(product);
+                } else if (value == 'toggleStock') {
+                  provider.setInStock(product, !product.inStock);
                 }
               },
               itemBuilder: (context) => [
@@ -271,13 +265,15 @@ class _ProductsScreenState extends State<ProductsScreen> {
                     ],
                   ),
                 ),
-                const PopupMenuItem(
-                  value: 'sync',
+                PopupMenuItem(
+                  value: 'toggleStock',
                   child: Row(
                     children: [
-                      Icon(Icons.sync),
-                      SizedBox(width: 8),
-                      Text('Sync to Astro'),
+                      Icon(product.inStock
+                          ? Icons.remove_shopping_cart
+                          : Icons.shopping_cart),
+                      const SizedBox(width: 8),
+                      Text(product.inStock ? 'Mark Sold Out' : 'Mark In Stock'),
                     ],
                   ),
                 ),

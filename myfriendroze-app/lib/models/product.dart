@@ -1,34 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// Sync status for products with external systems (like Astro site)
-enum ProductSyncStatus {
-  pending,
-  synced,
-  failed,
-  notSynced;
-
-  String get displayName {
-    switch (this) {
-      case ProductSyncStatus.pending:
-        return 'Syncing...';
-      case ProductSyncStatus.synced:
-        return 'Synced';
-      case ProductSyncStatus.failed:
-        return 'Sync Failed';
-      case ProductSyncStatus.notSynced:
-        return 'Not Synced';
-    }
-  }
-
-  static ProductSyncStatus fromString(String? status) {
-    if (status == null) return ProductSyncStatus.notSynced;
-    return ProductSyncStatus.values.firstWhere(
-      (e) => e.name == status,
-      orElse: () => ProductSyncStatus.notSynced,
-    );
-  }
-}
-
 class Product {
   final String id;
   final String title;
@@ -48,9 +19,15 @@ class Product {
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool isActive;
-  final ProductSyncStatus syncStatus;
-  final DateTime? lastSyncAt;
-  final String? syncError;
+  // Distinct from isActive: isActive gates whether a product is fetched/
+  // shown on the site at all; inStock marks a still-visible product as
+  // sold out (site shows it with a disabled "Sold Out" state instead of
+  // hiding it, which matters for one-of-a-kind pieces that stay useful as
+  // portfolio/gallery items after they sell). Read by product-mapping.js's
+  // docToProduct and enforced server-side at the checkout boundary in
+  // firebase/functions/lib/pricing.js — this is the admin-side control for
+  // both.
+  final bool inStock;
 
   Product({
     required this.id,
@@ -68,9 +45,7 @@ class Product {
     required this.createdAt,
     required this.updatedAt,
     this.isActive = true,
-    this.syncStatus = ProductSyncStatus.notSynced,
-    this.lastSyncAt,
-    this.syncError,
+    this.inStock = true,
   });
 
   // Backwards compatibility getter
@@ -108,14 +83,14 @@ class Product {
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       isActive: data['isActive'] ?? true,
-      syncStatus: ProductSyncStatus.fromString(data['syncStatus'] as String?),
-      lastSyncAt: (data['lastSyncAt'] as Timestamp?)?.toDate(),
-      syncError: data['syncError'] as String?,
+      // Existing products predate this feature — default to purchasable,
+      // matching product-mapping.js's docToProduct on the site side.
+      inStock: data['inStock'] ?? true,
     );
   }
 
   Map<String, dynamic> toFirestore() {
-    final data = {
+    return {
       'title': title,
       'description': description,
       'price': price,
@@ -132,18 +107,8 @@ class Product {
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
       'isActive': isActive,
-      'syncStatus': syncStatus.name,
+      'inStock': inStock,
     };
-
-    if (lastSyncAt != null) {
-      data['lastSyncAt'] = Timestamp.fromDate(lastSyncAt!);
-    }
-
-    if (syncError != null) {
-      data['syncError'] = syncError!;
-    }
-
-    return data;
   }
 
   Product copyWith({
@@ -163,9 +128,7 @@ class Product {
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? isActive,
-    ProductSyncStatus? syncStatus,
-    DateTime? lastSyncAt,
-    String? syncError,
+    bool? inStock,
   }) {
     List<String> finalImageUrls = imageUrls ?? this.imageUrls;
 
@@ -190,9 +153,7 @@ class Product {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       isActive: isActive ?? this.isActive,
-      syncStatus: syncStatus ?? this.syncStatus,
-      lastSyncAt: lastSyncAt ?? this.lastSyncAt,
-      syncError: syncError ?? this.syncError,
+      inStock: inStock ?? this.inStock,
     );
   }
 }
