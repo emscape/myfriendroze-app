@@ -5,7 +5,16 @@ import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  // Injectable so tests can supply a throwing/resolving loader directly,
+  // instead of swapping PackageInfoPlatform.instance and depending on
+  // PackageInfo.fromPlatform()'s undocumented global memoization (which
+  // also made a test's outcome depend on run order — fragile under
+  // `flutter test --test-randomize-ordering-seed`). Defaults to the real
+  // platform lookup in production.
+  final Future<PackageInfo> Function() packageInfoLoader;
+
+  ProfileScreen({super.key, Future<PackageInfo> Function()? packageInfoLoader})
+      : packageInfoLoader = packageInfoLoader ?? PackageInfo.fromPlatform;
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -22,7 +31,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    PackageInfo.fromPlatform().then((info) {
+    widget.packageInfoLoader().then((info) {
       if (!mounted) return;
       setState(() {
         _versionLabel = 'Version ${info.version} (${info.buildNumber})';
