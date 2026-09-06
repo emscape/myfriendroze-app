@@ -83,7 +83,7 @@ class AppRouter {
         ),
         GoRoute(
           path: '/profile',
-          builder: (context, state) => const ProfileScreen(),
+          builder: (context, state) => ProfileScreen(),
         ),
         GoRoute(
           path: '/gallery',
