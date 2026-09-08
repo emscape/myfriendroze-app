@@ -3,7 +3,11 @@ description: Admin app for managing products and events for MyFriendRoze
 
 publish_to: 'none'
 
-version: 1.0.0+1
+# The +N build number here is a static fallback for local `flutter run`/
+# `flutter build` only. Every real deploy goes through scripts/deploy-web.sh,
+# which overrides it with the actual git commit count at build time — see
+# that script and the Deployment section of CLAUDE.md for why.
+version: 1.0.0+34
 
 environment:
   sdk: '>=3.8.0 <4.0.0'
