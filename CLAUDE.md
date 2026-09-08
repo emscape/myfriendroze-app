@@ -172,21 +172,25 @@ Use `/test-driven-development` skill for RED→GREEN→COMMIT→REFACTOR cycle.
 
 ## Deployment
 
+**Master auto-deploys the web build.** Merging a PR to `master` automatically builds and deploys the web/PWA build to Firebase Hosting via GitHub Actions (the `deploy` job in `.github/workflows/ci.yml`) — no manual step needed. It runs the same `scripts/deploy-web.sh` used for local manual deploys, so the build-number convention below applies identically either way. Android has no CD (no native build is currently distributed, see admin-app-web-hosting memory) — `flutter build apk` stays manual.
+
 ```bash
-# Run in browser (dev)
-cd myfriendroze-app/myfriendroze-app
+# Run in browser (dev) — from the repo root, the Flutter project is one
+# level down (pubspec.yaml lives at myfriendroze-app/pubspec.yaml)
+cd myfriendroze-app
 flutter run -d chrome
 
-# Build + deploy the web/PWA build — use the script, not raw flutter/firebase
-# commands. It bakes in --build-number=$(git rev-list --count HEAD) so the
-# Profile screen's version display actually changes on every real deploy
-# (see lib/screens/profile/profile_screen.dart); typed by hand, that flag is
+# Manual web deploy — e.g. to verify a fix before merging, or to redeploy
+# without a new commit. Use the script, not raw flutter/firebase commands:
+# it bakes in --build-number=$(git rev-list --count HEAD) so the Profile
+# screen's version display actually changes on every real deploy (see
+# lib/screens/profile/profile_screen.dart); typed by hand, that flag is
 # easy to forget, which silently falls back to pubspec.yaml's static value
-# and makes every build look identical.
+# and makes every build look identical. CD uses this same script.
 ./scripts/deploy-web.sh
 
-# Build Android APK, same convention (no deploy script yet — no native
-# Android build is currently distributed, see admin-app-web-hosting memory)
+# Build Android APK, same build-number convention (no deploy script or CD
+# yet — no native Android build is currently distributed)
 flutter build apk --build-number=$(git rev-list --count HEAD)
 
 # Analyze for issues
@@ -199,4 +203,4 @@ flutter test
 Admin accounts must be created manually in the Firebase Console (Authentication → Add user).  
 The app writes to `myfriendroze-platform` Firestore — changes are reflected in the Astro website at next build.
 
-**Confirming a deploy actually shipped**: the Profile screen shows `Version <pubspec version> (<build number>)`. If the build number shown on a device/browser doesn't match `git rev-list --count HEAD` on the commit you just deployed, that device is running a stale build — rebuild and redeploy (web, via `scripts/deploy-web.sh`) or reinstall the APK (Android) before debugging further. This app has no CI/CD; every deploy is a manual run from a human's machine, so "did the last fix actually reach the device" cannot be assumed — verify it.
+**Confirming a deploy actually shipped**: the Profile screen shows `Version <pubspec version> (<build number>)`. If the build number shown on a device/browser doesn't match `git rev-list --count HEAD` on the commit that should be live, that device is running a stale build — for web, check the CD run in GitHub Actions actually succeeded before assuming the fix is wrong; for Android (no CD), rebuild and reinstall the APK.

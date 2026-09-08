@@ -28,6 +28,10 @@ echo "Building web release, build number ${BUILD_NUMBER} (git rev-list --count H
 flutter build web --release --build-number="${BUILD_NUMBER}"
 
 echo "Deploying to Firebase Hosting (myfriendroze-platform)..."
-firebase deploy --only hosting --project myfriendroze-platform
+# --non-interactive: this script also runs unattended in CD (see
+# .github/workflows/ci.yml's deploy job) — a hosting-only deploy doesn't
+# normally prompt for anything, but this guarantees a real failure instead
+# of an indefinitely hung job if that ever changes.
+firebase deploy --only hosting --project myfriendroze-platform --non-interactive
 
 echo "Deployed. Version shown on the Profile screen should read: ${VERSION_NAME} (${BUILD_NUMBER})"
