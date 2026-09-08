@@ -175,8 +175,9 @@ Use `/test-driven-development` skill for RED→GREEN→COMMIT→REFACTOR cycle.
 **Master auto-deploys the web build.** Merging a PR to `master` automatically builds and deploys the web/PWA build to Firebase Hosting via GitHub Actions (the `deploy` job in `.github/workflows/ci.yml`) — no manual step needed. It runs the same `scripts/deploy-web.sh` used for local manual deploys, so the build-number convention below applies identically either way. Android has no CD (no native build is currently distributed, see admin-app-web-hosting memory) — `flutter build apk` stays manual.
 
 ```bash
-# Run in browser (dev)
-cd myfriendroze-app/myfriendroze-app
+# Run in browser (dev) — from the repo root, the Flutter project is one
+# level down (pubspec.yaml lives at myfriendroze-app/pubspec.yaml)
+cd myfriendroze-app
 flutter run -d chrome
 
 # Manual web deploy — e.g. to verify a fix before merging, or to redeploy
