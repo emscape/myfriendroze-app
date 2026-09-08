@@ -5,7 +5,7 @@
 
   "session_start": {
     "custom_notes": [
-      "Flutter project root is myfriendroze-app/myfriendroze-app/ — run flutter commands from there",
+      "Flutter project root is myfriendroze-app/ — run flutter commands from there",
       "Run in Chrome for web dev: flutter run -d chrome",
       "Run on Android: flutter run -d android (or specific device ID)",
       "Firebase config is in lib/firebase_options.dart (project: myfriendroze-platform)",
@@ -83,9 +83,9 @@
   },
 
   "commands": {
-    "lint": "cd myfriendroze-app/myfriendroze-app && flutter analyze",
-    "test": "cd myfriendroze-app/myfriendroze-app && flutter test",
-    "typecheck": "cd myfriendroze-app/myfriendroze-app && flutter analyze",
-    "build": "cd myfriendroze-app/myfriendroze-app && flutter build web"
+    "lint": "cd myfriendroze-app && flutter analyze",
+    "test": "cd myfriendroze-app && flutter test",
+    "typecheck": "cd myfriendroze-app && flutter analyze",
+    "build": "cd myfriendroze-app && flutter build web"
   }
 }

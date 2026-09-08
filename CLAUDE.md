@@ -28,7 +28,7 @@
 
 This project runs on **Windows 11** with Flutter SDK installed. Rules:
 
-- **Flutter project root**: `myfriendroze-app/myfriendroze-app/` — always run `flutter` commands from here
+- **Flutter project root**: `myfriendroze-app/` (one level below the repo root — `pubspec.yaml` lives at `myfriendroze-app/pubspec.yaml`) — always run `flutter` commands from here
 - **Web dev**: `flutter run -d chrome` (opens Chrome in debug mode)
 - **Android**: `flutter run -d android` or `flutter run -d <device-id>`
 - **Analyze**: `flutter analyze` (equivalent to type-checking)
@@ -140,7 +140,7 @@ See `AGENTS.md` for full text. Key reminders:
 ## File Organization
 
 **Root** (`myfriendroze-app/`): `README.md`, `CLAUDE.md`, `AGENTS.md`, `docs/` only.  
-**Flutter project root** (`myfriendroze-app/myfriendroze-app/`): `pubspec.yaml`, `lib/`, `test/`, `android/`, `web/`, `windows/`.  
+**Flutter project root** (`myfriendroze-app/`, one level below the repo root): `pubspec.yaml`, `lib/`, `test/`, `android/`, `web/`, `windows/`.  
 **Working notes / analysis**: `docs/` folder (gitignore it).  
 **Never** create documentation files in either root unless user-facing.
 
