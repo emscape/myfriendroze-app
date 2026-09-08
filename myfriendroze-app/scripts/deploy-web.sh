@@ -19,6 +19,10 @@ if [ -n "$(git status --porcelain)" ]; then
 fi
 
 BUILD_NUMBER=$(git rev-list --count HEAD)
+# Read the version name (the part before +N) straight from pubspec.yaml
+# rather than hardcoding it, so this line doesn't go stale the next time
+# the version name changes independently of this script.
+VERSION_NAME=$(grep -m1 '^version:' pubspec.yaml | sed -E 's/^version:\s*([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
 echo "Building web release, build number ${BUILD_NUMBER} (git rev-list --count HEAD)..."
 
 flutter build web --release --build-number="${BUILD_NUMBER}"
@@ -26,4 +30,4 @@ flutter build web --release --build-number="${BUILD_NUMBER}"
 echo "Deploying to Firebase Hosting (myfriendroze-platform)..."
 firebase deploy --only hosting --project myfriendroze-platform
 
-echo "Deployed. Version shown on the Profile screen should read: 1.0.0 (${BUILD_NUMBER})"
+echo "Deployed. Version shown on the Profile screen should read: ${VERSION_NAME} (${BUILD_NUMBER})"
