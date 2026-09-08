@@ -1,20 +1,31 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/app_refresh_service.dart';
 
 class ProfileScreen extends StatefulWidget {
-  // Injectable so tests can supply a throwing/resolving loader directly,
-  // instead of swapping PackageInfoPlatform.instance and depending on
+  // All three injectable so tests can supply fakes directly, instead of
+  // e.g. swapping PackageInfoPlatform.instance and depending on
   // PackageInfo.fromPlatform()'s undocumented global memoization (which
   // also made a test's outcome depend on run order — fragile under
-  // `flutter test --test-randomize-ordering-seed`). Defaults to the real
-  // platform lookup in production.
+  // `flutter test --test-randomize-ordering-seed`). showRefreshButton
+  // defaults to kIsWeb: the refresh trick (service worker + cache clear) is
+  // meaningless outside the PWA — a native install updates by reinstalling.
   final Future<PackageInfo> Function() packageInfoLoader;
+  final Future<void> Function() onRefreshApp;
+  final bool showRefreshButton;
 
-  ProfileScreen({super.key, Future<PackageInfo> Function()? packageInfoLoader})
-      : packageInfoLoader = packageInfoLoader ?? PackageInfo.fromPlatform;
+  ProfileScreen({
+    super.key,
+    Future<PackageInfo> Function()? packageInfoLoader,
+    Future<void> Function()? onRefreshApp,
+    bool? showRefreshButton,
+  })  : packageInfoLoader = packageInfoLoader ?? PackageInfo.fromPlatform,
+        onRefreshApp = onRefreshApp ?? refreshApp,
+        showRefreshButton = showRefreshButton ?? kIsWeb;
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -27,6 +38,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // it visibly changes on every real deploy — useful for confirming a
   // device/browser is actually running the build you think it is.
   String _versionLabel = '';
+  bool _isRefreshing = false;
 
   @override
   void initState() {
@@ -99,7 +111,57 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                
+
+                // Refresh App — web only (see showRefreshButton doc). Force-
+                // clears the PWA's service worker + caches and reloads, so
+                // a stuck old build doesn't need the home-screen bookmark
+                // removed and re-added to see a new deploy.
+                if (widget.showRefreshButton) ...[
+                  OutlinedButton.icon(
+                    onPressed: _isRefreshing
+                        ? null
+                        : () async {
+                            setState(() => _isRefreshing = true);
+                            try {
+                              await widget.onRefreshApp();
+                            } catch (error, stackTrace) {
+                              // A real onRefreshApp reloads the page as its
+                              // last step — an error here means something
+                              // earlier (getRegistrations, cache access)
+                              // failed before ever reaching reload. Logged
+                              // with its stack trace (JS interop/service-
+                              // worker errors are hard to diagnose from the
+                              // message alone) rather than silently
+                              // swallowed; the finally below is what
+                              // actually matters for the user — don't leave
+                              // the button stuck disabled with no way to
+                              // retry.
+                              debugPrint(
+                                '[ProfileScreen] Refresh App failed: $error\n$stackTrace',
+                              );
+                            } finally {
+                              // onRefreshApp reloads the page on real
+                              // success — this only still runs at all when
+                              // a test fake doesn't reload, or the call
+                              // failed above, so resetting state is safe
+                              // either way.
+                              if (mounted) {
+                                setState(() => _isRefreshing = false);
+                              }
+                            }
+                          },
+                    icon: _isRefreshing
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.refresh),
+                    label: const Text('Refresh App'),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
                 // App info
                 Card(
                   child: Padding(
