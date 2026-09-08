@@ -1,41 +1,30 @@
 // Web implementation for app_refresh_service.dart — see that file's header.
 //
-// Uses dart:js_util's generic property/method access rather than typed
-// dart:html bindings for navigator.serviceWorker/caches: dart:html's
-// Cache Storage coverage is inconsistent across Dart SDK versions, while
-// plain JS interop only assumes the browser APIs themselves exist (true
-// in every browser this PWA targets).
-import 'dart:js_util' as js_util;
+// Uses package:web's typed bindings (Navigator.serviceWorker,
+// Window.caches) rather than dart:js_util's generic property/method
+// access — dart:js_util is not just deprecated but fully removed on
+// newer Dart SDKs (confirmed via a CI failure on a newer stable Flutter
+// than this was first written against: `uri_does_not_exist` for
+// 'dart:js_util'). package:web is the actively maintained replacement.
+import 'dart:js_interop';
+
+import 'package:web/web.dart' as web;
 
 const bool canRefreshApp = true;
 
 Future<void> refreshApp() async {
-  final navigator = js_util.getProperty(js_util.globalThis, 'navigator');
-  final serviceWorker = js_util.getProperty(navigator, 'serviceWorker');
-
-  if (serviceWorker != null) {
-    final registrations = await js_util.promiseToFuture<List<dynamic>>(
-      js_util.callMethod(serviceWorker, 'getRegistrations', []),
-    );
-    for (final registration in registrations) {
-      await js_util.promiseToFuture<dynamic>(
-        js_util.callMethod(registration, 'unregister', []),
-      );
-    }
+  final registrations =
+      (await web.window.navigator.serviceWorker.getRegistrations().toDart)
+          .toDart;
+  for (final registration in registrations) {
+    await registration.unregister().toDart;
   }
 
-  final caches = js_util.getProperty(js_util.globalThis, 'caches');
-  if (caches != null) {
-    final keys = await js_util.promiseToFuture<List<dynamic>>(
-      js_util.callMethod(caches, 'keys', []),
-    );
-    for (final key in keys) {
-      await js_util.promiseToFuture<dynamic>(
-        js_util.callMethod(caches, 'delete', [key]),
-      );
-    }
+  final cacheStorage = web.window.caches;
+  final keys = (await cacheStorage.keys().toDart).toDart;
+  for (final key in keys) {
+    await cacheStorage.delete(key.toDart).toDart;
   }
 
-  final location = js_util.getProperty(js_util.globalThis, 'location');
-  js_util.callMethod(location, 'reload', []);
+  web.window.location.reload();
 }
