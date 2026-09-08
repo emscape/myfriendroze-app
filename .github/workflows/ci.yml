@@ -63,6 +63,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          # deploy-web.sh computes the build number via `git rev-list
+          # --count HEAD`; actions/checkout's default shallow clone
+          # (fetch-depth: 1) would make that always return 1, silently
+          # defeating the whole versioning scheme this PR exists to fix.
+          fetch-depth: 0
 
       - uses: subosito/flutter-action@v2
         with:
@@ -83,8 +88,15 @@ jobs:
         # printf instead of echo avoids a trailing newline and any
         # implementation-defined escaping of the JSON content; chmod locks
         # the file down to this job's own user rather than the runner's
-        # default (typically world-readable) permissions.
+        # default (typically world-readable) permissions. Fails fast with
+        # a clear message if the secret is missing/empty, rather than
+        # writing an empty file and letting `firebase deploy` fail later
+        # with a confusing, unrelated-looking auth error.
         run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT_KEY" ]; then
+            echo "::error::FIREBASE_SERVICE_ACCOUNT_KEY is empty or unset — add it to this repo's 'production' GitHub Environment (Settings > Environments)." >&2
+            exit 1
+          fi
           printf '%s' "$FIREBASE_SERVICE_ACCOUNT_KEY" > "$RUNNER_TEMP/service-account.json"
           chmod 600 "$RUNNER_TEMP/service-account.json"
         env:
