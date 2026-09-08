@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../providers/product_provider.dart';
 import '../../models/product.dart';
+import '../../utils/unit_conversions.dart';
 
 class ProductsScreen extends StatefulWidget {
   const ProductsScreen({super.key});
@@ -210,7 +211,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       ),
                       const SizedBox(width: 16),
                       Text(
-                        '${product.weight}g',
+                        formatWeightGrams(product.weight),
                         style: TextStyle(color: Colors.grey[600]),
                       ),
                     ],
