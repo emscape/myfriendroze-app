@@ -37,3 +37,68 @@ jobs:
         # and can't pass unattended in CI. Run it manually with that
         # infrastructure up: flutter test --tags=live
         run: flutter test --exclude-tags=live
+
+  deploy:
+    name: Deploy to Firebase Hosting (production)
+    needs: [flutter]
+    # pull_request runs never have github.ref == refs/heads/master (it's the
+    # PR's merge ref instead), so this only fires once a PR actually merges
+    # and lands as a push to master.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    environment: production
+    # This job handles a production credential, so GITHUB_TOKEN is scoped to
+    # the minimum it actually needs (checkout) rather than inheriting the
+    # repo's default permissions. Same hardened pattern as myfriendroze's CD
+    # job — see that repo's ci.yml deploy job for the fuller rationale.
+    permissions:
+      contents: read
+    concurrency:
+      group: admin-app-production-deploy
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: myfriendroze-app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - name: Install firebase-tools
+        # Version-pinned to the release already confirmed working for the
+        # sibling myfriendroze repo's CD, so this isn't the first place a
+        # newer major version's behavior gets tested. deploy-web.sh calls
+        # the bare `firebase` command, so it needs to already be on PATH
+        # here — unlike a dev machine, this runner has nothing pre-installed.
+        run: npm install -g firebase-tools@15.26.0
+
+      - name: Write service account key
+        # printf instead of echo avoids a trailing newline and any
+        # implementation-defined escaping of the JSON content; chmod locks
+        # the file down to this job's own user rather than the runner's
+        # default (typically world-readable) permissions.
+        run: |
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT_KEY" > "$RUNNER_TEMP/service-account.json"
+          chmod 600 "$RUNNER_TEMP/service-account.json"
+        env:
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+
+      - name: Build + deploy web
+        run: ./scripts/deploy-web.sh
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/service-account.json
+
+      - name: Remove service account key
+        # Runs even if the deploy step above failed — the runner is
+        # ephemeral and destroyed after the job either way, but this closes
+        # the window if a future step is ever added after deploy, or if
+        # logs/artifacts ever capture $RUNNER_TEMP.
+        if: always()
+        run: rm -f "$RUNNER_TEMP/service-account.json"
