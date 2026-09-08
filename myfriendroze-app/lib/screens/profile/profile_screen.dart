@@ -124,16 +124,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             setState(() => _isRefreshing = true);
                             try {
                               await widget.onRefreshApp();
-                            } catch (error) {
+                            } catch (error, stackTrace) {
                               // A real onRefreshApp reloads the page as its
                               // last step — an error here means something
                               // earlier (getRegistrations, cache access)
                               // failed before ever reaching reload. Logged
-                              // rather than silently swallowed; the finally
-                              // below is what actually matters for the
-                              // user — don't leave the button stuck
-                              // disabled with no way to retry.
-                              debugPrint('[ProfileScreen] Refresh App failed: $error');
+                              // with its stack trace (JS interop/service-
+                              // worker errors are hard to diagnose from the
+                              // message alone) rather than silently
+                              // swallowed; the finally below is what
+                              // actually matters for the user — don't leave
+                              // the button stuck disabled with no way to
+                              // retry.
+                              debugPrint(
+                                '[ProfileScreen] Refresh App failed: $error\n$stackTrace',
+                              );
                             } finally {
                               // onRefreshApp reloads the page on real
                               // success — this only still runs at all when
