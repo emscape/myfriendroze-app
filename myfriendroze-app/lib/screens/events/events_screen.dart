@@ -203,7 +203,9 @@ class _EventsScreenState extends State<EventsScreen> {
                 // Actions
                 PopupMenuButton<String>(
                   onSelected: (value) async {
-                    if (value == 'delete') {
+                    if (value == 'edit') {
+                      context.go('/events/add', extra: event);
+                    } else if (value == 'delete') {
                       final confirmed = await _showDeleteConfirmation(context);
                       if (confirmed) {
                         provider.deleteEvent(event);

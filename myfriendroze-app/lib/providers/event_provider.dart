@@ -43,6 +43,7 @@ class EventProvider extends ChangeNotifier {
     required String title,
     required String description,
     required DateTime eventDate,
+    DateTime? endDate,
     required String location,
     File? imageFile,
   }) async {
@@ -51,7 +52,7 @@ class EventProvider extends ChangeNotifier {
       _setError(null);
 
       String? imageUrl;
-      
+
       // Upload image if provided
       if (imageFile != null) {
         imageUrl = await StorageService.uploadEventImage(imageFile);
@@ -63,6 +64,7 @@ class EventProvider extends ChangeNotifier {
         title: title,
         description: description,
         eventDate: eventDate,
+        endDate: endDate,
         location: location,
         imageUrl: imageUrl,
         createdAt: DateTime.now(),

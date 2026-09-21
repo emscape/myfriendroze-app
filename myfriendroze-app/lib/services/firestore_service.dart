@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../models/product.dart';
 import '../models/event.dart';
 import '../models/gallery_photo.dart';
+import '../models/saved_location.dart';
 
 class FirestoreService {
   static FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -26,6 +27,10 @@ class FirestoreService {
   // Gallery collection reference
   static CollectionReference get _galleryCollection =>
       _firestore.collection('gallery');
+
+  // Saved locations collection reference
+  static CollectionReference get _savedLocationsCollection =>
+      _firestore.collection('savedLocations');
 
   // Product operations
   static Future<String> addProduct(Product product) async {
@@ -119,6 +124,33 @@ class FirestoreService {
     } catch (e) {
       throw Exception('Failed to get event: $e');
     }
+  }
+
+  // Saved location operations
+  static Future<String> addSavedLocation(SavedLocation location) async {
+    try {
+      final docRef = await _savedLocationsCollection.add(location.toFirestore());
+      return docRef.id;
+    } catch (e) {
+      throw Exception('Failed to add saved location: $e');
+    }
+  }
+
+  static Future<void> deleteSavedLocation(String locationId) async {
+    try {
+      await _savedLocationsCollection.doc(locationId).delete();
+    } catch (e) {
+      throw Exception('Failed to delete saved location: $e');
+    }
+  }
+
+  static Stream<List<SavedLocation>> getSavedLocations() {
+    return _savedLocationsCollection
+        .orderBy('name')
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => SavedLocation.fromFirestore(doc))
+            .toList());
   }
 
   // Gallery operations
