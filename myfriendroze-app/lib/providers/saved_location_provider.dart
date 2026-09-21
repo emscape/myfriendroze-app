@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/saved_location.dart';
 import '../services/firestore_service.dart';
@@ -9,6 +10,11 @@ class SavedLocationProvider extends ChangeNotifier {
   List<SavedLocation> _locations = [];
   bool _isLoading = false;
   String? _errorMessage;
+  // loadLocations() can be called every time the add/edit event form opens
+  // (this provider is a single long-lived instance, not recreated per
+  // screen) — tracked so each call replaces the previous listener instead
+  // of accumulating one Firestore subscription per open.
+  StreamSubscription<List<SavedLocation>>? _subscription;
 
   List<SavedLocation> get locations => _locations;
   bool get isLoading => _isLoading;
@@ -29,7 +35,8 @@ class SavedLocationProvider extends ChangeNotifier {
   }
 
   void loadLocations() {
-    FirestoreService.getSavedLocations().listen(
+    _subscription?.cancel();
+    _subscription = FirestoreService.getSavedLocations().listen(
       (locations) {
         _locations = locations;
         notifyListeners();
@@ -38,6 +45,12 @@ class SavedLocationProvider extends ChangeNotifier {
         _setError('Failed to load saved locations: $error');
       },
     );
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
   }
 
   Future<bool> addLocation({required String name, required String address}) async {

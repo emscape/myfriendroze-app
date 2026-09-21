@@ -86,15 +86,13 @@ class EventProvider extends ChangeNotifier {
       _setLoading(true);
       _setError(null);
 
+      final oldImageUrl = event.imageUrl;
       String? imageUrl = event.imageUrl;
-      
-      // Upload new image if provided
+
+      // Upload the replacement BEFORE touching the old image — if the
+      // upload throws, the event keeps pointing at its existing (still
+      // live) photo instead of an already-deleted Storage object.
       if (newImageFile != null) {
-        // Delete old image if exists
-        if (event.imageUrl != null && event.imageUrl!.isNotEmpty) {
-          await StorageService.deleteImage(event.imageUrl!);
-        }
-        // Upload new image
         imageUrl = await StorageService.uploadEventImage(newImageFile);
       }
 
@@ -104,6 +102,19 @@ class EventProvider extends ChangeNotifier {
       );
 
       await FirestoreService.updateEvent(updatedEvent);
+
+      // Only clean up the old image once the new one is safely live in
+      // Firestore. Best-effort: the event update already succeeded and is
+      // showing the new photo, so a leftover orphaned Storage object isn't
+      // worth failing the whole edit over.
+      if (newImageFile != null && oldImageUrl != null && oldImageUrl.isNotEmpty) {
+        try {
+          await StorageService.deleteImage(oldImageUrl);
+        } catch (_) {
+          // Ignored — see comment above.
+        }
+      }
+
       _setLoading(false);
       return true;
     } catch (e) {

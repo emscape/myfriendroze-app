@@ -32,13 +32,12 @@ class _AddEventScreenState extends State<AddEventScreen> {
   final ImagePicker _imagePicker = ImagePicker();
   DateTime _selectedDate = DateTime.now().add(const Duration(days: 1));
   TimeOfDay _selectedTime = TimeOfDay.now();
-  // Defaults to the start time — a zero-length range is a safer default
-  // than an inverted one, and it's immediately obvious on screen so it's
-  // easy to notice and correct.
+  // Always overwritten in initState — see there for the actual default.
   TimeOfDay _selectedEndTime = TimeOfDay.now();
   bool _isMultiDay = false;
   DateTime? _selectedEndDate;
   bool _saveLocationForLater = false;
+  bool _isSubmitting = false;
 
   @override
   void initState() {
@@ -46,9 +45,6 @@ class _AddEventScreenState extends State<AddEventScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<SavedLocationProvider>(context, listen: false).loadLocations();
     });
-    // Defaults to the start time for a brand-new event — overwritten below
-    // when editing an existing one.
-    _selectedEndTime = _selectedTime;
 
     // If editing, prefill fields
     final event = widget.eventToEdit;
@@ -58,6 +54,12 @@ class _AddEventScreenState extends State<AddEventScreen> {
       _locationController.text = event.location;
       _selectedDate = event.eventDate;
       _selectedTime = TimeOfDay.fromDateTime(event.eventDate);
+      // Defaults to the event's (just-assigned) start time — a legacy
+      // event with no endDate would otherwise leave _selectedEndTime at
+      // its field default (roughly "now"), letting a completely unrelated
+      // end time get silently saved just from reopening the event to edit
+      // something else. Overwritten below when an explicit endDate exists.
+      _selectedEndTime = _selectedTime;
       if (event.endDate != null) {
         _selectedEndTime = TimeOfDay.fromDateTime(event.endDate!);
         if (!_isSameDay(event.endDate!, event.eventDate)) {
@@ -65,6 +67,11 @@ class _AddEventScreenState extends State<AddEventScreen> {
           _selectedEndDate = event.endDate;
         }
       }
+    } else {
+      // Brand-new event: defaults to the start time — a zero-length range
+      // is a safer default than an inverted one, and it's immediately
+      // obvious on screen so it's easy to notice and correct.
+      _selectedEndTime = _selectedTime;
     }
   }
 
@@ -225,49 +232,82 @@ class _AddEventScreenState extends State<AddEventScreen> {
     );
   }
 
+  // Multi-day checked with no end date tapped would otherwise silently
+  // fall back to same-day in _endDateTime, and an end time earlier than
+  // the start would silently save an inverted range — both caught here
+  // instead of reaching the provider.
+  String? get _scheduleError {
+    if (_isMultiDay && _selectedEndDate == null) {
+      return 'Please select an end date for this multi-day event.';
+    }
+    if (_endDateTime.isBefore(_eventDateTime)) {
+      return 'End date/time must be after the start date/time.';
+    }
+    return null;
+  }
+
   Future<void> _handleSubmit() async {
-    if (_formKey.currentState!.validate()) {
-      final eventProvider = Provider.of<EventProvider>(context, listen: false);
-      final location = _locationController.text.trim();
+    // A local guard, not just eventProvider.isLoading: the provider clears
+    // isLoading as soon as its own Firestore write returns, but this
+    // method still has an awaited saved-location write after that — a
+    // fast double-tap in that window could otherwise re-enter this method
+    // and create a duplicate event before the first call navigates away.
+    if (_isSubmitting) return;
+    if (!_formKey.currentState!.validate()) return;
 
-      bool success;
-      if (_isEditing) {
-        final updatedEvent = widget.eventToEdit!.copyWith(
-          title: _titleController.text.trim(),
-          description: _descriptionController.text.trim(),
-          eventDate: _eventDateTime,
-          endDate: _endDateTime,
-          location: location,
-        );
-        success = await eventProvider.updateEvent(updatedEvent, newImageFile: _selectedImage);
-      } else {
-        success = await eventProvider.addEvent(
-          title: _titleController.text.trim(),
-          description: _descriptionController.text.trim(),
-          eventDate: _eventDateTime,
-          endDate: _endDateTime,
-          location: location,
-          imageFile: _selectedImage,
-        );
-      }
+    final scheduleError = _scheduleError;
+    if (scheduleError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(scheduleError)));
+      return;
+    }
 
-      // Saving the location is best-effort and shouldn't block navigating
-      // away on a successful event save — a failure here just means Roze
-      // has to type the address again next time.
-      if (success && _saveLocationForLater && location.isNotEmpty && mounted) {
-        final name = _saveLocationNameController.text.trim();
-        await Provider.of<SavedLocationProvider>(context, listen: false).addLocation(
-          name: name.isNotEmpty ? name : location,
-          address: location,
-        );
-      }
+    setState(() => _isSubmitting = true);
 
-      if (success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(_isEditing ? 'Event updated successfully!' : 'Event added successfully!')),
-        );
-        context.go('/events');
-      }
+    final eventProvider = Provider.of<EventProvider>(context, listen: false);
+    final location = _locationController.text.trim();
+
+    bool success;
+    if (_isEditing) {
+      final updatedEvent = widget.eventToEdit!.copyWith(
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim(),
+        eventDate: _eventDateTime,
+        endDate: _endDateTime,
+        location: location,
+      );
+      success = await eventProvider.updateEvent(updatedEvent, newImageFile: _selectedImage);
+    } else {
+      success = await eventProvider.addEvent(
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim(),
+        eventDate: _eventDateTime,
+        endDate: _endDateTime,
+        location: location,
+        imageFile: _selectedImage,
+      );
+    }
+
+    // Saving the location is best-effort and shouldn't block navigating
+    // away on a successful event save — a failure here just means Roze
+    // has to type the address again next time.
+    if (success && _saveLocationForLater && location.isNotEmpty && mounted) {
+      final name = _saveLocationNameController.text.trim();
+      await Provider.of<SavedLocationProvider>(context, listen: false).addLocation(
+        name: name.isNotEmpty ? name : location,
+        address: location,
+      );
+    }
+
+    if (success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_isEditing ? 'Event updated successfully!' : 'Event added successfully!')),
+      );
+      context.go('/events');
+      return;
+    }
+
+    if (mounted) {
+      setState(() => _isSubmitting = false);
     }
   }
 
@@ -309,18 +349,13 @@ class _AddEventScreenState extends State<AddEventScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Description field
+              // Description field — optional; not every event needs one
+              // (e.g. an art walk with its own well-known format).
               CustomTextField(
                 controller: _descriptionController,
-                labelText: 'Description',
+                labelText: 'Description (optional)',
                 maxLines: 4,
                 enableVoice: true,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter a description';
-                  }
-                  return null;
-                },
               ),
               const SizedBox(height: 16),
 
@@ -447,9 +482,10 @@ class _AddEventScreenState extends State<AddEventScreen> {
               // Submit button
               Consumer<EventProvider>(
                 builder: (context, eventProvider, _) {
+                  final busy = _isSubmitting || eventProvider.isLoading;
                   return ElevatedButton(
-                    onPressed: eventProvider.isLoading ? null : _handleSubmit,
-                    child: eventProvider.isLoading
+                    onPressed: busy ? null : _handleSubmit,
+                    child: busy
                         ? const SizedBox(
                             height: 20,
                             width: 20,

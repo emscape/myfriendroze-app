@@ -33,6 +33,26 @@ void main() {
       expect(provider.locations.map((l) => l.name).toList(), ['Common Space Brewing', 'Jackalope Pasadena']);
     });
 
+    test('loadLocations replaces the previous subscription instead of accumulating listeners', () async {
+      // Simulates the add/edit event form being opened multiple times —
+      // AddEventScreen.initState calls loadLocations() on this same
+      // long-lived provider instance every time.
+      provider.loadLocations();
+      provider.loadLocations();
+      provider.loadLocations();
+      await Future<void>.delayed(Duration.zero);
+
+      var notifyCount = 0;
+      provider.addListener(() => notifyCount++);
+
+      await fakeFirestore.collection('savedLocations').add({'name': 'New Venue', 'address': 'TBD'});
+      await Future<void>.delayed(Duration.zero);
+
+      // One Firestore change should notify exactly once — three
+      // accumulated subscriptions would notify three times instead.
+      expect(notifyCount, 1);
+    });
+
     test('deleteLocation removes the Firestore doc', () async {
       await provider.addLocation(name: 'To delete', address: 'TBD');
       final docs = await fakeFirestore.collection('savedLocations').get();
