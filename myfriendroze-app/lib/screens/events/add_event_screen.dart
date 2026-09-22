@@ -243,7 +243,11 @@ class _AddEventScreenState extends State<AddEventScreen> {
     if (_isMultiDay && _selectedEndDate != null && _isSameDay(_selectedEndDate!, _selectedDate)) {
       return 'End date must be a different day for a multi-day event — uncheck "Multi-day event" if it ends the same day.';
     }
-    if (_endDateTime.isBefore(_eventDateTime)) {
+    if (!_endDateTime.isAfter(_eventDateTime)) {
+      // Covers both "before" and "exactly equal" — _selectedEndTime
+      // defaults to the start time (see initState), so a brand-new event
+      // left untouched would otherwise submit with a zero-length schedule
+      // despite this message implying "after" means strictly after.
       return 'End date/time must be after the start date/time.';
     }
     return null;

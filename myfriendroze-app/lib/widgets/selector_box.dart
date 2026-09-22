@@ -19,22 +19,34 @@ class SelectorBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: fillWidth ? double.infinity : null,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-            const SizedBox(height: 4),
-            Text(value, style: const TextStyle(fontSize: 16)),
-          ],
+    // GestureDetector alone isn't focusable and exposes no button
+    // semantics, so this box couldn't be reached or activated with a
+    // keyboard, or announced meaningfully by a screen reader. InkWell
+    // provides focus + keyboard (Enter/Space) activation; the explicit
+    // Semantics wrapper gives it a single clear "label: value" reading
+    // instead of the child Text widgets being announced separately.
+    return Semantics(
+      button: true,
+      label: '$label: $value',
+      excludeSemantics: true,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          width: fillWidth ? double.infinity : null,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              const SizedBox(height: 4),
+              Text(value, style: const TextStyle(fontSize: 16)),
+            ],
+          ),
         ),
       ),
     );
