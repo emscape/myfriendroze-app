@@ -8,10 +8,11 @@ import 'package:myfriendroze_admin/services/firestore_service.dart';
 import 'package:myfriendroze_admin/services/storage_service.dart';
 
 // firebase_storage_mocks' putFile doesn't validate the file exists or fail
-// on bad input, so an upload-failure scenario can't be reproduced with it —
-// this only covers the happy path. The reorder itself (upload before
-// delete, see event_provider.dart) is what actually protects the failure
-// case; it isn't exercised here for lack of a way to force that failure.
+// on bad input, so an upload-failure scenario can't be reproduced with it.
+// Firestore-write failure IS reproducible (.update() on a missing doc
+// throws), which covers the second half of event_provider.dart's
+// upload-then-write-then-cleanup ordering — but see the note in that test
+// for what still isn't independently verified even there.
 void main() {
   group('EventProvider.updateEvent image replacement', () {
     late FakeFirebaseFirestore fakeFirestore;
@@ -65,6 +66,43 @@ void main() {
         () => mockStorage.ref().child(_pathFromUrl(oldImageUrl)).getDownloadURL(),
         throwsA(anything),
       );
+    });
+
+    test('cleans up the orphaned replacement upload when the Firestore write itself fails', () async {
+      await provider.addEvent(
+        title: 'Mezcala',
+        description: '9a - 2p',
+        eventDate: DateTime(2026, 8, 22),
+        location: '6901 Orange Ave, Long Beach, CA',
+        imageFile: tempImageFile,
+      );
+      final addedDocs = await fakeFirestore.collection('events').get();
+      final original = Event.fromFirestore(addedDocs.docs.first);
+      final oldImageUrl = original.imageUrl!;
+
+      // .update() on a doc that doesn't exist throws NOT_FOUND on real
+      // Firestore (and on the fake) — used here to force the write to fail
+      // without needing to fake a network error.
+      final eventWithMissingDoc = original.copyWith(id: 'does-not-exist-in-firestore');
+
+      final result = await provider.updateEvent(eventWithMissingDoc, newImageFile: tempImageFile);
+
+      expect(result, isFalse);
+      expect(provider.errorMessage, isNotNull);
+
+      // The original doc's imageUrl is untouched — the write never
+      // succeeded, so it's still the real event's live photo.
+      final untouchedDocs = await fakeFirestore.collection('events').get();
+      expect(untouchedDocs.docs.first.data()['imageUrl'], oldImageUrl);
+
+      // NOTE: this does NOT independently verify the orphaned replacement
+      // upload was actually deleted from Storage — a mockStorage.listAll()
+      // item-count check was tried and passed identically whether the
+      // cleanup code was present or removed (confirmed by temporarily
+      // reverting the fix), so it wasn't discriminating between correct
+      // and broken behavior and was dropped rather than kept as a test
+      // that looks meaningful but isn't. That half of the fix is verified
+      // by code review only.
     });
   });
 }

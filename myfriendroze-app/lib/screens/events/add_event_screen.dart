@@ -240,6 +240,9 @@ class _AddEventScreenState extends State<AddEventScreen> {
     if (_isMultiDay && _selectedEndDate == null) {
       return 'Please select an end date for this multi-day event.';
     }
+    if (_isMultiDay && _selectedEndDate != null && _isSameDay(_selectedEndDate!, _selectedDate)) {
+      return 'End date must be a different day for a multi-day event — uncheck "Multi-day event" if it ends the same day.';
+    }
     if (_endDateTime.isBefore(_eventDateTime)) {
       return 'End date/time must be after the start date/time.';
     }

@@ -101,9 +101,25 @@ class EventProvider extends ChangeNotifier {
         updatedAt: DateTime.now(),
       );
 
-      await FirestoreService.updateEvent(updatedEvent);
+      try {
+        await FirestoreService.updateEvent(updatedEvent);
+      } catch (e) {
+        // The Firestore write itself failed — the event still points at
+        // its original image, so a just-uploaded replacement (if any) is
+        // now an orphan. Best-effort cleanup so a failed edit doesn't
+        // leave storage waste behind; the failure itself still propagates
+        // to the outer catch below.
+        if (newImageFile != null && imageUrl != null && imageUrl != oldImageUrl) {
+          try {
+            await StorageService.deleteImage(imageUrl);
+          } catch (_) {
+            // Ignored — nothing more we can do here.
+          }
+        }
+        rethrow;
+      }
 
-      // Only clean up the old image once the new one is safely live in
+      // Only clean up the OLD image once the new one is safely live in
       // Firestore. Best-effort: the event update already succeeded and is
       // showing the new photo, so a leftover orphaned Storage object isn't
       // worth failing the whole edit over.
