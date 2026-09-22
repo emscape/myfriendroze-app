@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:firebase_storage_mocks/firebase_storage_mocks.dart';
@@ -19,6 +20,13 @@ import 'package:myfriendroze_admin/services/storage_service.dart';
 // read (getEvent) specifically guards against. Forcing FakeFirebaseFirestore
 // to both apply an .update() AND throw from it would need a seam this
 // codebase doesn't have; verified by code review instead.
+//
+// Also worth noting: this whole suite runs in the Dart VM, where dart:io's
+// File works normally — so the File-based tests below could never have
+// caught the real production bug (putFile()/Image.file() both throw
+// UnimplementedError on an actual web build, where dart:io isn't
+// implemented at all). The bytes-based group exists specifically because
+// that's the path a real web/PWA session actually takes.
 void main() {
   group('EventProvider.updateEvent image replacement', () {
     late FakeFirebaseFirestore fakeFirestore;
@@ -114,6 +122,77 @@ void main() {
       // and broken behavior and was dropped rather than kept as a test
       // that looks meaningful but isn't. That half of the fix is verified
       // by code review only.
+    });
+  });
+
+  // These tests confirm that passing imageBytes exercises the bytes-upload
+  // branch in EventProvider (the actual production logic that decides
+  // putData vs putFile) and that the resulting event round-trips through
+  // Firestore correctly. What they do NOT prove: that this suite, run by
+  // the plain Dart VM, ever executes the real web StorageService.putData()
+  // call against an actual browser IndexedDB/network stack, or that
+  // add_event_screen.dart's kIsWeb branching still correctly routes to
+  // imageBytes (not imageFile) on a real web build — a regression in
+  // either of those wouldn't fail here. MockFirebaseStorage is a hand-
+  // written fake, not a Mockito mock, so there's no verify()-style seam
+  // to assert putData specifically was called instead of putFile without
+  // building new mock infrastructure for FirebaseStorage/Reference.
+  // Mitigated by manual testing: confirmed live via `flutter run -d
+  // chrome` that an event photo upload actually succeeds (see PR
+  // description) before this shipped.
+  group('EventProvider image upload (bytes path — web)', () {
+    late FakeFirebaseFirestore fakeFirestore;
+    late MockFirebaseStorage mockStorage;
+    late EventProvider provider;
+    final imageBytes = Uint8List.fromList([1, 2, 3, 4]);
+
+    setUp(() {
+      fakeFirestore = FakeFirebaseFirestore();
+      mockStorage = MockFirebaseStorage();
+      FirestoreService.setFirestoreInstance(fakeFirestore);
+      StorageService.setStorageInstance(mockStorage);
+      provider = EventProvider();
+    });
+
+    test('addEvent uploads via bytes instead of putFile when imageBytes is given', () async {
+      final result = await provider.addEvent(
+        title: 'Mezcala',
+        description: '9a - 2p',
+        eventDate: DateTime(2026, 8, 22),
+        location: '6901 Orange Ave, Long Beach, CA',
+        imageBytes: imageBytes,
+      );
+
+      expect(result, isTrue);
+      final docs = await fakeFirestore.collection('events').get();
+      expect(docs.docs.first.data()['imageUrl'], isNotEmpty);
+    });
+
+    test('updateEvent uploads a replacement via bytes and cleans up the old image', () async {
+      await provider.addEvent(
+        title: 'Mezcala',
+        description: '9a - 2p',
+        eventDate: DateTime(2026, 8, 22),
+        location: '6901 Orange Ave, Long Beach, CA',
+        imageBytes: imageBytes,
+      );
+      final addedDocs = await fakeFirestore.collection('events').get();
+      final original = Event.fromFirestore(addedDocs.docs.first);
+      final oldImageUrl = original.imageUrl!;
+
+      final result = await provider.updateEvent(
+        original,
+        newImageBytes: Uint8List.fromList([5, 6, 7, 8]),
+      );
+
+      expect(result, isTrue);
+      final doc = await fakeFirestore.collection('events').doc(original.id).get();
+      final newImageUrl = doc.data()!['imageUrl'] as String;
+      expect(newImageUrl, isNot(equals(oldImageUrl)));
+      expect(
+        () => mockStorage.ref().child(_pathFromUrl(oldImageUrl)).getDownloadURL(),
+        throwsA(anything),
+      );
     });
   });
 }

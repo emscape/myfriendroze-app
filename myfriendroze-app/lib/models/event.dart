@@ -13,6 +13,7 @@ class Event {
   final DateTime? endDate;
   final String location;
   final String? imageUrl;
+  final String? link;
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool isActive;
@@ -25,6 +26,7 @@ class Event {
     this.endDate,
     required this.location,
     this.imageUrl,
+    this.link,
     required this.createdAt,
     required this.updatedAt,
     this.isActive = true,
@@ -40,6 +42,7 @@ class Event {
       endDate: (data['endDate'] as Timestamp?)?.toDate(),
       location: data['location'] ?? '',
       imageUrl: data['imageUrl'],
+      link: data['link'],
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       isActive: data['isActive'] ?? true,
@@ -54,6 +57,7 @@ class Event {
       'endDate': endDate != null ? Timestamp.fromDate(endDate!) : null,
       'location': location,
       'imageUrl': imageUrl,
+      'link': link,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
       'isActive': isActive,
@@ -73,6 +77,10 @@ class Event {
     bool clearEndDate = false,
     String? location,
     String? imageUrl,
+    // Same "not passed" vs "explicitly clear" ambiguity as endDate —
+    // clearLink opts into actually removing a previously-set link.
+    String? link,
+    bool clearLink = false,
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? isActive,
@@ -85,6 +93,7 @@ class Event {
       endDate: clearEndDate ? null : (endDate ?? this.endDate),
       location: location ?? this.location,
       imageUrl: imageUrl ?? this.imageUrl,
+      link: clearLink ? null : (link ?? this.link),
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       isActive: isActive ?? this.isActive,

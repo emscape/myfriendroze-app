@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:myfriendroze_admin/models/event.dart';
 import 'package:myfriendroze_admin/providers/event_provider.dart';
 import 'package:myfriendroze_admin/services/firestore_service.dart';
 
@@ -40,6 +41,39 @@ void main() {
 
       final docs = await fakeFirestore.collection('events').get();
       expect(docs.docs.first.data()['endDate'], isNull);
+    });
+
+    test('addEvent persists an optional link', () async {
+      await provider.addEvent(
+        title: 'Mezcala',
+        description: '9a - 2p',
+        eventDate: DateTime(2026, 8, 22),
+        location: '6901 Orange Ave, Long Beach, CA',
+        link: 'https://example.com/mezcala-market',
+      );
+
+      final docs = await fakeFirestore.collection('events').get();
+      expect(docs.docs.first.data()['link'], 'https://example.com/mezcala-market');
+    });
+
+    test('updateEvent with clearLink removes a previously-saved link in Firestore', () async {
+      await provider.addEvent(
+        title: 'Mezcala',
+        description: '9a - 2p',
+        eventDate: DateTime(2026, 8, 22),
+        location: '6901 Orange Ave, Long Beach, CA',
+        link: 'https://example.com/mezcala-market',
+      );
+      final addedDocs = await fakeFirestore.collection('events').get();
+      final original = Event.fromFirestore(addedDocs.docs.first);
+      expect(original.link, 'https://example.com/mezcala-market');
+
+      final updated = original.copyWith(clearLink: true);
+      final result = await provider.updateEvent(updated);
+
+      expect(result, isTrue);
+      final doc = await fakeFirestore.collection('events').doc(original.id).get();
+      expect(doc.data()!['link'], isNull);
     });
 
     test('loadEvents populates events from the Firestore stream', () async {

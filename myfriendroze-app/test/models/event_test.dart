@@ -46,6 +46,45 @@ void main() {
       expect(roundTripped.endDate, isNull);
     });
 
+    test('preserves an optional link', () async {
+      final firestore = FakeFirebaseFirestore();
+      final original = Event(
+        id: '',
+        title: 'Mezcala',
+        description: '9a - 2p',
+        eventDate: DateTime(2026, 8, 22),
+        location: '6901 Orange Ave, Long Beach, CA',
+        link: 'https://example.com/mezcala-market',
+        createdAt: DateTime(2026, 8, 1),
+        updatedAt: DateTime(2026, 8, 1),
+      );
+
+      final ref = await firestore.collection('events').add(original.toFirestore());
+      final snapshot = await ref.get();
+      final roundTripped = Event.fromFirestore(snapshot);
+
+      expect(roundTripped.link, 'https://example.com/mezcala-market');
+    });
+
+    test('leaves link null when not provided', () async {
+      final firestore = FakeFirebaseFirestore();
+      final original = Event(
+        id: '',
+        title: 'Mezcala',
+        description: '9a - 2p',
+        eventDate: DateTime(2026, 8, 22),
+        location: '6901 Orange Ave, Long Beach, CA',
+        createdAt: DateTime(2026, 8, 1),
+        updatedAt: DateTime(2026, 8, 1),
+      );
+
+      final ref = await firestore.collection('events').add(original.toFirestore());
+      final snapshot = await ref.get();
+      final roundTripped = Event.fromFirestore(snapshot);
+
+      expect(roundTripped.link, isNull);
+    });
+
     test('fromFirestore defaults a missing endDate field to null (pre-existing docs written before this field existed)', () async {
       // Written by hand (not via Event.toFirestore()) so the doc has no
       // endDate key at all, matching what's actually in Firestore for any
@@ -95,6 +134,20 @@ void main() {
       final updated = base.copyWith(clearEndDate: true);
 
       expect(updated.endDate, isNull);
+    });
+
+    test('replaces link when a new one is passed', () {
+      final updated = base.copyWith(link: 'https://example.com/new-link');
+
+      expect(updated.link, 'https://example.com/new-link');
+    });
+
+    test('clears link when clearLink is true', () {
+      final withLink = base.copyWith(link: 'https://example.com/link');
+
+      final updated = withLink.copyWith(clearLink: true);
+
+      expect(updated.link, isNull);
     });
   });
 }

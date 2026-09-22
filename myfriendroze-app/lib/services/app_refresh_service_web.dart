@@ -26,5 +26,15 @@ Future<void> refreshApp() async {
     await cacheStorage.delete(key.toDart).toDart;
   }
 
+  // Deliberately NOT clearing IndexedDB here. A prior version of this
+  // function did, on the assumption that cached_network_image's cache
+  // (via flutter_cache_manager) was IndexedDB-backed on web — checked the
+  // locked flutter_cache_manager 3.4.1 source directly and that's wrong:
+  // its web Config uses NonStoringObjectProvider + MemoryCacheSystem, an
+  // in-memory-only cache with no persistence at all, already fully
+  // cleared by the reload() below with no extra code needed. Actually
+  // deleting IndexedDB would only have risked wiping Firebase Auth's/
+  // Firestore's own IndexedDB-backed persistence (a real correctness
+  // hazard — e.g. logging the user out), for a problem that didn't exist.
   web.window.location.reload();
 }
