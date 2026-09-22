@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:intl/intl.dart';
 import '../../providers/product_provider.dart';
 import '../../models/product.dart';
 
@@ -229,6 +230,27 @@ class _ProductsScreenState extends State<ProductsScreen> {
                         'SOLD OUT',
                         style: TextStyle(
                           color: Colors.red,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                  if (product.publishAt != null &&
+                      product.publishAt!.isAfter(DateTime.now())) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.blue[50],
+                        border: Border.all(color: Colors.blue),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        'SCHEDULED: ${DateFormat('MMM d, h:mm a').format(product.publishAt!)}',
+                        style: const TextStyle(
+                          color: Colors.blue,
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
                         ),

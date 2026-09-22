@@ -51,6 +51,7 @@ class ProductProvider extends ChangeNotifier {
     double shippingBoxHeightIn = 0.0,
     double shippingBoxWidthIn = 0.0,
     double shippingBoxDepthIn = 0.0,
+    DateTime? publishAt,
     List<File>? imageFiles,
     List<Uint8List>? imageBytesList,
     // Backwards compatibility
@@ -98,6 +99,7 @@ class ProductProvider extends ChangeNotifier {
         imageUrls: imageUrls,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
+        publishAt: publishAt,
       );
 
       await FirestoreService.addProduct(product);
