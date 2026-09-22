@@ -448,8 +448,8 @@ class _AddEventScreenState extends State<AddEventScreen> {
                 ),
               const SizedBox(height: 16),
 
-              // Link field — optional; shows on the site as a "More Info"
-              // button when present.
+              // Link field — optional; shows on the site as an "event link"
+              // when present.
               CustomTextField(
                 controller: _linkController,
                 labelText: 'Link (optional)',
@@ -458,8 +458,16 @@ class _AddEventScreenState extends State<AddEventScreen> {
                 validator: (value) {
                   final trimmed = value?.trim() ?? '';
                   if (trimmed.isEmpty) return null;
-                  if (!RegExp(r'^https?://').hasMatch(trimmed)) {
-                    return 'Link must start with http:// or https://';
+                  // A prefix-only check (e.g. RegExp(r'^https?://')) lets
+                  // through a value like "https://" or "https://?foo" —
+                  // no actual host, so the site's rendered link would have
+                  // nowhere to navigate to. Parsing as a URI and requiring
+                  // a real host catches that.
+                  final uri = Uri.tryParse(trimmed);
+                  final isValidHttpUrl =
+                      uri != null && (uri.scheme == 'http' || uri.scheme == 'https') && uri.host.isNotEmpty;
+                  if (!isValidHttpUrl) {
+                    return 'Enter a valid link starting with http:// or https://';
                   }
                   return null;
                 },
