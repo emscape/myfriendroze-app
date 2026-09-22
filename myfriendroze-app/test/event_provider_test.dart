@@ -42,6 +42,19 @@ void main() {
       expect(docs.docs.first.data()['endDate'], isNull);
     });
 
+    test('addEvent persists an optional link', () async {
+      await provider.addEvent(
+        title: 'Mezcala',
+        description: '9a - 2p',
+        eventDate: DateTime(2026, 8, 22),
+        location: '6901 Orange Ave, Long Beach, CA',
+        link: 'https://example.com/mezcala-market',
+      );
+
+      final docs = await fakeFirestore.collection('events').get();
+      expect(docs.docs.first.data()['link'], 'https://example.com/mezcala-market');
+    });
+
     test('loadEvents populates events from the Firestore stream', () async {
       await provider.addEvent(
         title: 'Mezcala',

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../models/event.dart';
 import '../services/firestore_service.dart';
@@ -46,6 +47,8 @@ class EventProvider extends ChangeNotifier {
     DateTime? endDate,
     required String location,
     File? imageFile,
+    Uint8List? imageBytes,
+    String? link,
   }) async {
     try {
       _setLoading(true);
@@ -53,8 +56,15 @@ class EventProvider extends ChangeNotifier {
 
       String? imageUrl;
 
-      // Upload image if provided
-      if (imageFile != null) {
+      // Bytes checked first: on web, dart:io File paths from image_picker
+      // don't correspond to a real filesystem, so uploadEventImage's
+      // putFile() throws UnimplementedError there — the caller must use
+      // readAsBytes() on web and pass imageBytes instead (see
+      // add_event_screen.dart, matching the same File/bytes split already
+      // used for products and gallery photos).
+      if (imageBytes != null) {
+        imageUrl = await StorageService.uploadEventImageFromBytes(imageBytes);
+      } else if (imageFile != null) {
         imageUrl = await StorageService.uploadEventImage(imageFile);
       }
 
@@ -67,6 +77,7 @@ class EventProvider extends ChangeNotifier {
         endDate: endDate,
         location: location,
         imageUrl: imageUrl,
+        link: link,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
@@ -81,18 +92,29 @@ class EventProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> updateEvent(Event event, {File? newImageFile}) async {
+  Future<bool> updateEvent(
+    Event event, {
+    File? newImageFile,
+    Uint8List? newImageBytes,
+  }) async {
     try {
       _setLoading(true);
       _setError(null);
 
       final oldImageUrl = event.imageUrl;
       String? imageUrl = event.imageUrl;
+      // Whether a replacement was attempted at all, regardless of which
+      // form (bytes on web, file on native) — used below instead of
+      // repeating both null checks at each call site.
+      final hasReplacement = newImageBytes != null || newImageFile != null;
 
       // Upload the replacement BEFORE touching the old image — if the
       // upload throws, the event keeps pointing at its existing (still
-      // live) photo instead of an already-deleted Storage object.
-      if (newImageFile != null) {
+      // live) photo instead of an already-deleted Storage object. Bytes
+      // checked first — see addEvent's comment on why.
+      if (newImageBytes != null) {
+        imageUrl = await StorageService.uploadEventImageFromBytes(newImageBytes);
+      } else if (newImageFile != null) {
         imageUrl = await StorageService.uploadEventImage(newImageFile);
       }
 
@@ -112,7 +134,7 @@ class EventProvider extends ChangeNotifier {
         // replacement if it demonstrably ISN'T the one Firestore has;
         // if we can't even confirm that, leave it alone — an orphaned
         // Storage object is far less harmful than a broken live photo.
-        if (newImageFile != null && imageUrl != null && imageUrl != oldImageUrl) {
+        if (hasReplacement && imageUrl != null && imageUrl != oldImageUrl) {
           try {
             final currentDoc = await FirestoreService.getEvent(event.id);
             if (currentDoc != null && currentDoc.imageUrl != imageUrl) {
@@ -129,7 +151,7 @@ class EventProvider extends ChangeNotifier {
       // Firestore. Best-effort: the event update already succeeded and is
       // showing the new photo, so a leftover orphaned Storage object isn't
       // worth failing the whole edit over.
-      if (newImageFile != null && oldImageUrl != null && oldImageUrl.isNotEmpty) {
+      if (hasReplacement && oldImageUrl != null && oldImageUrl.isNotEmpty) {
         try {
           await StorageService.deleteImage(oldImageUrl);
         } catch (_) {

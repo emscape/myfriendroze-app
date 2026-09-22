@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
@@ -27,8 +29,15 @@ class _AddEventScreenState extends State<AddEventScreen> {
   final _descriptionController = TextEditingController();
   final _locationController = TextEditingController();
   final _saveLocationNameController = TextEditingController();
+  final _linkController = TextEditingController();
 
+  // dart:io File works for picking on native platforms, but on web
+  // image_picker's XFile has no real filesystem path — Image.file() and
+  // StorageService's putFile() both fail there (see event_provider.dart's
+  // addEvent comment). _pickImage branches on kIsWeb to populate whichever
+  // of these two is actually usable on the current platform.
   File? _selectedImage;
+  Uint8List? _selectedImageBytes;
   final ImagePicker _imagePicker = ImagePicker();
   DateTime _selectedDate = DateTime.now().add(const Duration(days: 1));
   TimeOfDay _selectedTime = TimeOfDay.now();
@@ -52,6 +61,7 @@ class _AddEventScreenState extends State<AddEventScreen> {
       _titleController.text = event.title;
       _descriptionController.text = event.description;
       _locationController.text = event.location;
+      _linkController.text = event.link ?? '';
       _selectedDate = event.eventDate;
       _selectedTime = TimeOfDay.fromDateTime(event.eventDate);
       // Defaults to the event's (just-assigned) start time — a legacy
@@ -85,6 +95,7 @@ class _AddEventScreenState extends State<AddEventScreen> {
     _descriptionController.dispose();
     _locationController.dispose();
     _saveLocationNameController.dispose();
+    _linkController.dispose();
     super.dispose();
   }
 
@@ -98,9 +109,18 @@ class _AddEventScreenState extends State<AddEventScreen> {
       );
       
       if (image != null) {
-        setState(() {
-          _selectedImage = File(image.path);
-        });
+        if (kIsWeb) {
+          final bytes = await image.readAsBytes();
+          setState(() {
+            _selectedImageBytes = bytes;
+            _selectedImage = null;
+          });
+        } else {
+          setState(() {
+            _selectedImage = File(image.path);
+            _selectedImageBytes = null;
+          });
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -280,6 +300,8 @@ class _AddEventScreenState extends State<AddEventScreen> {
 
     final eventProvider = Provider.of<EventProvider>(context, listen: false);
     final location = _locationController.text.trim();
+    final linkText = _linkController.text.trim();
+    final link = linkText.isEmpty ? null : linkText;
 
     bool success;
     if (_isEditing) {
@@ -289,8 +311,14 @@ class _AddEventScreenState extends State<AddEventScreen> {
         eventDate: _eventDateTime,
         endDate: _endDateTime,
         location: location,
+        link: link,
+        clearLink: link == null,
       );
-      success = await eventProvider.updateEvent(updatedEvent, newImageFile: _selectedImage);
+      success = await eventProvider.updateEvent(
+        updatedEvent,
+        newImageFile: _selectedImage,
+        newImageBytes: _selectedImageBytes,
+      );
     } else {
       success = await eventProvider.addEvent(
         title: _titleController.text.trim(),
@@ -299,6 +327,8 @@ class _AddEventScreenState extends State<AddEventScreen> {
         endDate: _endDateTime,
         location: location,
         imageFile: _selectedImage,
+        imageBytes: _selectedImageBytes,
+        link: link,
       );
     }
 
@@ -347,7 +377,11 @@ class _AddEventScreenState extends State<AddEventScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Optional image picker
-              ImagePickerBox(selectedImage: _selectedImage, onTap: _showImageSourceDialog),
+              ImagePickerBox(
+                selectedImage: _selectedImage,
+                selectedImageBytes: _selectedImageBytes,
+                onTap: _showImageSourceDialog,
+              ),
               const SizedBox(height: 24),
 
               // Title field
@@ -412,6 +446,24 @@ class _AddEventScreenState extends State<AddEventScreen> {
                     labelText: "Save as (e.g. 'Jackalope Pasadena')",
                   ),
                 ),
+              const SizedBox(height: 16),
+
+              // Link field — optional; shows on the site as a "More Info"
+              // button when present.
+              CustomTextField(
+                controller: _linkController,
+                labelText: 'Link (optional)',
+                hintText: 'https://...',
+                keyboardType: TextInputType.url,
+                validator: (value) {
+                  final trimmed = value?.trim() ?? '';
+                  if (trimmed.isEmpty) return null;
+                  if (!RegExp(r'^https?://').hasMatch(trimmed)) {
+                    return 'Link must start with http:// or https://';
+                  }
+                  return null;
+                },
+              ),
               const SizedBox(height: 16),
 
               // Start date/time
