@@ -10,6 +10,7 @@ import '../screens/products/add_product_screen.dart';
 import '../models/product.dart';
 import '../screens/events/events_screen.dart';
 import '../screens/events/add_event_screen.dart';
+import '../models/event.dart';
 import '../screens/profile/profile_screen.dart';
 import '../screens/gallery/gallery_screen.dart';
 import '../screens/gallery/add_gallery_photo_screen.dart';
@@ -79,7 +80,13 @@ class AppRouter {
         ),
         GoRoute(
           path: '/events/add',
-          builder: (context, state) => const AddEventScreen(),
+          builder: (context, state) {
+            final extra = state.extra;
+            if (extra is Event) {
+              return AddEventScreen(eventToEdit: extra);
+            }
+            return const AddEventScreen();
+          },
         ),
         GoRoute(
           path: '/profile',
