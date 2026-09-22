@@ -144,11 +144,16 @@ class _AddEventScreenState extends State<AddEventScreen> {
     // — reopening a past event to edit it (see events_screen.dart's edit
     // action) means _selectedDate can already be before DateTime.now().
     final firstDate = _selectedDate.isBefore(DateTime.now()) ? _selectedDate : DateTime.now();
+    // Same asserts-if-violated constraint applies to lastDate: an event
+    // already scheduled more than 365 days out (also reachable via
+    // editing) would put initialDate after this fixed cap.
+    final defaultLastDate = DateTime.now().add(const Duration(days: 365));
+    final lastDate = _selectedDate.isAfter(defaultLastDate) ? _selectedDate : defaultLastDate;
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate,
       firstDate: firstDate,
-      lastDate: DateTime.now().add(const Duration(days: 365)),
+      lastDate: lastDate,
     );
 
     if (picked != null && picked != _selectedDate) {
@@ -167,11 +172,14 @@ class _AddEventScreenState extends State<AddEventScreen> {
   Future<void> _selectEndDate() async {
     final initialEndDate = _selectedEndDate ?? _selectedDate;
     final firstDate = _selectedDate;
+    final effectiveInitial = initialEndDate.isBefore(firstDate) ? firstDate : initialEndDate;
+    final defaultLastDate = DateTime.now().add(const Duration(days: 365));
+    final lastDate = effectiveInitial.isAfter(defaultLastDate) ? effectiveInitial : defaultLastDate;
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: initialEndDate.isBefore(firstDate) ? firstDate : initialEndDate,
+      initialDate: effectiveInitial,
       firstDate: firstDate,
-      lastDate: DateTime.now().add(const Duration(days: 365)),
+      lastDate: lastDate,
     );
 
     if (picked != null) {

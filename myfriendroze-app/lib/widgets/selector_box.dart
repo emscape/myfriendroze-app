@@ -25,10 +25,17 @@ class SelectorBox extends StatelessWidget {
     // provides focus + keyboard (Enter/Space) activation; the explicit
     // Semantics wrapper gives it a single clear "label: value" reading
     // instead of the child Text widgets being announced separately.
+    //
+    // excludeSemantics also suppresses the child InkWell's OWN semantics —
+    // including the tap action it would otherwise expose — so without
+    // passing onTap here too, assistive tech would announce this as a
+    // button but have no action to invoke on it. This onTap registers the
+    // activation directly on this Semantics node.
     return Semantics(
       button: true,
       label: '$label: $value',
       excludeSemantics: true,
+      onTap: onTap,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(8),

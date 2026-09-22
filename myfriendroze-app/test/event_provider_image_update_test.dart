@@ -13,6 +13,12 @@ import 'package:myfriendroze_admin/services/storage_service.dart';
 // throws), which covers the second half of event_provider.dart's
 // upload-then-write-then-cleanup ordering — but see the note in that test
 // for what still isn't independently verified even there.
+//
+// Not covered at all here: the "write actually committed server-side but
+// the client saw an exception anyway" scenario updateEvent's reconciliation
+// read (getEvent) specifically guards against. Forcing FakeFirebaseFirestore
+// to both apply an .update() AND throw from it would need a seam this
+// codebase doesn't have; verified by code review instead.
 void main() {
   group('EventProvider.updateEvent image replacement', () {
     late FakeFirebaseFirestore fakeFirestore;
@@ -68,7 +74,7 @@ void main() {
       );
     });
 
-    test('cleans up the orphaned replacement upload when the Firestore write itself fails', () async {
+    test('reports failure and leaves the original doc untouched when the Firestore write fails on a missing doc', () async {
       await provider.addEvent(
         title: 'Mezcala',
         description: '9a - 2p',
@@ -82,7 +88,12 @@ void main() {
 
       // .update() on a doc that doesn't exist throws NOT_FOUND on real
       // Firestore (and on the fake) — used here to force the write to fail
-      // without needing to fake a network error.
+      // without needing to fake a network error. Since the doc can't be
+      // found at all, updateEvent's reconciliation read (getEvent) also
+      // returns null here, so it conservatively does NOT attempt to
+      // delete the replacement upload in this particular scenario — see
+      // event_provider.dart's comment on why "can't confirm" defaults to
+      // leaving the Storage object alone rather than risking a live image.
       final eventWithMissingDoc = original.copyWith(id: 'does-not-exist-in-firestore');
 
       final result = await provider.updateEvent(eventWithMissingDoc, newImageFile: tempImageFile);

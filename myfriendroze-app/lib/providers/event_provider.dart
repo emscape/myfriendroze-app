@@ -104,16 +104,22 @@ class EventProvider extends ChangeNotifier {
       try {
         await FirestoreService.updateEvent(updatedEvent);
       } catch (e) {
-        // The Firestore write itself failed — the event still points at
-        // its original image, so a just-uploaded replacement (if any) is
-        // now an orphan. Best-effort cleanup so a failed edit doesn't
-        // leave storage waste behind; the failure itself still propagates
-        // to the outer catch below.
+        // A client-side exception here doesn't prove the write never
+        // landed — it can commit server-side while the acknowledgment is
+        // what actually fails/times out. Deleting the replacement on that
+        // assumption alone could break a live event's image if the write
+        // really did commit. Re-read the doc and only clean up the
+        // replacement if it demonstrably ISN'T the one Firestore has;
+        // if we can't even confirm that, leave it alone — an orphaned
+        // Storage object is far less harmful than a broken live photo.
         if (newImageFile != null && imageUrl != null && imageUrl != oldImageUrl) {
           try {
-            await StorageService.deleteImage(imageUrl);
+            final currentDoc = await FirestoreService.getEvent(event.id);
+            if (currentDoc != null && currentDoc.imageUrl != imageUrl) {
+              await StorageService.deleteImage(imageUrl);
+            }
           } catch (_) {
-            // Ignored — nothing more we can do here.
+            // Ignored — see comment above: default to not deleting.
           }
         }
         rethrow;
