@@ -106,9 +106,10 @@ class _EventsScreenState extends State<EventsScreen> {
     final DateFormat dateFormat = DateFormat('MMM dd, yyyy');
     final DateFormat timeFormat = DateFormat('h:mm a');
 
-    // event.endDate is only meaningfully different from eventDate for a
-    // real end time/multi-day span — the model defaults it to the same
-    // instant for legacy events with no explicit end.
+    // Excludes both legacy events with no endDate field at all
+    // (Event.fromFirestore leaves that null — it's never defaulted to
+    // eventDate) and the degenerate case of an explicit endDate equal to
+    // eventDate, so only a real end time/multi-day span renders below.
     final hasDistinctEndDate =
         event.endDate != null && event.endDate != event.eventDate;
 
@@ -208,9 +209,12 @@ class _EventsScreenState extends State<EventsScreen> {
                                 color: Colors.grey[600],
                               ),
                               const SizedBox(width: 4),
-                              Text(
-                                'End: ${dateFormat.format(event.endDate!)}, ${timeFormat.format(event.endDate!)}',
-                                style: TextStyle(color: Colors.grey[600]),
+                              Expanded(
+                                child: Text(
+                                  'End: ${dateFormat.format(event.endDate!)}, ${timeFormat.format(event.endDate!)}',
+                                  style: TextStyle(color: Colors.grey[600]),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                             ],
                           ),
