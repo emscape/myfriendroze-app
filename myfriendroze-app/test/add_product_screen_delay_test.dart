@@ -1,14 +1,18 @@
 // Widget test for the "Delay posting" (scheduled publish) toggle on the
-// add/edit product form. Doesn't drive the real showDatePicker/
+// add/edit product form. Mostly doesn't drive the real showDatePicker/
 // showTimePicker dialogs (brittle, not this repo's established widget-test
 // style) -- the future-only validation logic (_publishAtError) is simple
 // enough that the mandatory manual click-through (see this repo's
-// deployment docs) is the right check for that interactive path.
+// deployment docs) is the right check for that interactive path. The one
+// exception is the >365-day regression test below, which specifically
+// needs to open the real dialog to prove showDatePicker's own assertion
+// doesn't fire.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
+import 'package:myfriendroze_admin/models/product.dart';
 import 'package:myfriendroze_admin/providers/product_provider.dart';
 import 'package:myfriendroze_admin/screens/products/add_product_screen.dart';
 import 'package:myfriendroze_admin/widgets/selector_box.dart';
@@ -43,6 +47,42 @@ void main() {
 
       expect(find.text('Publish Date'), findsNothing);
       expect(find.text('Publish Time'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'opening the Publish Date picker does not crash for a product already scheduled more than 365 days out',
+    (tester) async {
+      final farFutureProduct = Product(
+        id: 'p1',
+        title: 'Way Out There',
+        description: 'Scheduled far in advance',
+        price: 50,
+        weight: 500,
+        publishAt: DateTime.now().add(const Duration(days: 400)),
+        imageUrls: const [],
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      await tester.pumpWidget(
+        ChangeNotifierProvider<ProductProvider>(
+          create: (_) => ProductProvider(),
+          child: MaterialApp(
+            home: AddProductScreen(productToEdit: farFutureProduct),
+          ),
+        ),
+      );
+
+      await tester.ensureVisible(find.text('Publish Date'));
+      await tester.tap(find.text('Publish Date'));
+      await tester.pumpAndSettle();
+
+      // showDatePicker's own firstDate <= initialDate <= lastDate assertion
+      // is what previously fired here -- reaching the dialog (rather than
+      // an exception during pump) is the regression check.
+      expect(tester.takeException(), isNull);
+      expect(find.byType(DatePickerDialog), findsOneWidget);
     },
   );
 }

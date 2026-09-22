@@ -168,11 +168,17 @@ class _AddProductScreenState extends State<AddProductScreen> {
     // already-live-schedule case initState skips prefilling for, but stay
     // defensive here too.
     final initialDate = _publishDate.isBefore(now) ? now : _publishDate;
+    // Same constraint applies to lastDate: a product already scheduled
+    // more than 365 days out (reachable by editing) would put initialDate
+    // after this fixed cap and crash showDatePicker's assertion — same fix
+    // as add_event_screen.dart's _selectDate/_selectEndDate.
+    final defaultLastDate = now.add(const Duration(days: 365));
+    final lastDate = _publishDate.isAfter(defaultLastDate) ? _publishDate : defaultLastDate;
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: initialDate,
       firstDate: now,
-      lastDate: now.add(const Duration(days: 365)),
+      lastDate: lastDate,
     );
 
     if (picked != null) {

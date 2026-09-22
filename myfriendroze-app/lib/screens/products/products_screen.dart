@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
@@ -14,12 +16,31 @@ class ProductsScreen extends StatefulWidget {
 }
 
 class _ProductsScreenState extends State<ProductsScreen> {
+  // The Firestore products stream only emits on a data change, not on a
+  // clock transition -- without this, a product's SCHEDULED badge would
+  // keep showing past its publishAt if the admin stays on this screen
+  // through the deadline. A plain periodic rebuild is simpler than
+  // scheduling a Timer per product for each one's exact deadline, and the
+  // badge is cosmetic (the actual publish gating lives server-side in
+  // products-live.js/firestore.rules) so up to a minute of staleness here
+  // is an acceptable trade-off.
+  Timer? _scheduledBadgeRefreshTimer;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<ProductProvider>(context, listen: false).loadProducts();
     });
+    _scheduledBadgeRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _scheduledBadgeRefreshTimer?.cancel();
+    super.dispose();
   }
 
   @override
