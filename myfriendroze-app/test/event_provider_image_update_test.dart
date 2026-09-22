@@ -125,6 +125,21 @@ void main() {
     });
   });
 
+  // These tests confirm that passing imageBytes exercises the bytes-upload
+  // branch in EventProvider (the actual production logic that decides
+  // putData vs putFile) and that the resulting event round-trips through
+  // Firestore correctly. What they do NOT prove: that this suite, run by
+  // the plain Dart VM, ever executes the real web StorageService.putData()
+  // call against an actual browser IndexedDB/network stack, or that
+  // add_event_screen.dart's kIsWeb branching still correctly routes to
+  // imageBytes (not imageFile) on a real web build — a regression in
+  // either of those wouldn't fail here. MockFirebaseStorage is a hand-
+  // written fake, not a Mockito mock, so there's no verify()-style seam
+  // to assert putData specifically was called instead of putFile without
+  // building new mock infrastructure for FirebaseStorage/Reference.
+  // Mitigated by manual testing: confirmed live via `flutter run -d
+  // chrome` that an event photo upload actually succeeds (see PR
+  // description) before this shipped.
   group('EventProvider image upload (bytes path — web)', () {
     late FakeFirebaseFirestore fakeFirestore;
     late MockFirebaseStorage mockStorage;
