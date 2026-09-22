@@ -174,6 +174,8 @@ Use `/test-driven-development` skill for RED→GREEN→COMMIT→REFACTOR cycle.
 
 **Master auto-deploys the web build.** Merging a PR to `master` automatically builds and deploys the web/PWA build to Firebase Hosting via GitHub Actions (the `deploy` job in `.github/workflows/ci.yml`) — no manual step needed. It runs the same `scripts/deploy-web.sh` used for local manual deploys, so the build-number convention below applies identically either way. Android has no CD (no native build is currently distributed, see admin-app-web-hosting memory) — `flutter build apk` stays manual.
 
+**Test UI changes locally before merging (MANDATORY).** `flutter analyze` and `flutter test` verify the code compiles and the business logic behaves correctly — neither one verifies that a screen actually renders the field you added, or that a button you wired up is actually reachable. Before merging anything that touches a screen, run `flutter run -d chrome` (or the relevant device) and manually click through the changed screens. This matters more here than in a typical project because merging deploys immediately with no manual gate after — a UI gap that visual testing would have caught in seconds instead ships straight to Roze. (Caught concretely 2026-09-22: an events-list display gap and a non-tappable card both shipped to production because only `flutter analyze`/`flutter test` were run, not the actual app.)
+
 ```bash
 # Run in browser (dev) — from the repo root, the Flutter project is one
 # level down (pubspec.yaml lives at myfriendroze-app/pubspec.yaml)
