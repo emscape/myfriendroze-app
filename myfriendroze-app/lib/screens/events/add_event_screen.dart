@@ -111,11 +111,16 @@ class _AddEventScreenState extends State<AddEventScreen> {
       if (image != null) {
         if (kIsWeb) {
           final bytes = await image.readAsBytes();
+          // readAsBytes() is itself an async gap — the form could have
+          // been disposed (navigated away from) while it was in flight,
+          // in which case setState() below would throw.
+          if (!mounted) return;
           setState(() {
             _selectedImageBytes = bytes;
             _selectedImage = null;
           });
         } else {
+          if (!mounted) return;
           setState(() {
             _selectedImage = File(image.path);
             _selectedImageBytes = null;
