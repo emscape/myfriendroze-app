@@ -56,4 +56,44 @@ void main() {
       expect(result.oz, 0);
     });
   });
+
+  group('formatWeightGrams', () {
+    test('rounds away floating-point noise from lbsOzToGrams', () {
+      // Reported bug: the products list showed raw values like
+      // "1530.87424875g" and "2.8349523125000005g" — lbsOzToGrams's exact
+      // math is correct (see the group above), the noise is only a
+      // problem once it hits an unformatted display.
+      expect(formatWeightGrams(1530.87424875), '1531g');
+      expect(formatWeightGrams(2.8349523125000005), '3g');
+    });
+
+    test('rounds to the nearest whole gram, not truncates', () {
+      expect(formatWeightGrams(680.388555), '680g');
+      expect(formatWeightGrams(113.398092), '113g');
+      // Both cases above round down, which a floor()-based implementation
+      // would also produce — this one only passes for genuine
+      // nearest-integer rounding, since floor(680.5) would be 680.
+      expect(formatWeightGrams(680.5), '681g');
+    });
+
+    test('zero grams formats as 0g', () {
+      expect(formatWeightGrams(0), '0g');
+    });
+
+    test('negative grams (malformed stored data) clamps to 0g rather than displaying a negative weight', () {
+      expect(formatWeightGrams(-5), '0g');
+    });
+
+    // double.round() throws UnsupportedError for non-finite values (verified
+    // against the Dart SDK directly) -- grams <= 0 is always false for NaN
+    // (NaN comparisons are always false), so without an explicit isFinite
+    // check a malformed NaN/Infinity weight would crash ProductsScreen's
+    // build instead of just displaying wrong, the same class of bug the
+    // negative-clamp fix above addresses for negative values.
+    test('non-finite grams (malformed stored data) clamps to 0g instead of throwing', () {
+      expect(formatWeightGrams(double.nan), '0g');
+      expect(formatWeightGrams(double.infinity), '0g');
+      expect(formatWeightGrams(double.negativeInfinity), '0g');
+    });
+  });
 }

@@ -45,3 +45,21 @@ LbsOz gramsToLbsOz(double grams) {
   }
   return LbsOz(lbs: wholeLbs, oz: roundedOz);
 }
+
+/// Formats a gram value for display, e.g. in the products list.
+///
+/// `lbsOzToGrams`'s output (and any value stored from it) is exact but not
+/// clean — `28.349523125` isn't exactly representable in binary floating
+/// point, so raw values like `1530.87424875` or `2.8349523125000005` were
+/// showing up straight in the UI (reported bug). Sub-gram precision has no
+/// real meaning for a shipping weight anyway, so this rounds to the
+/// nearest whole gram rather than truncating.
+///
+/// Negative input (malformed stored data predating validation, same case
+/// gramsToLbsOz already guards against) clamps to 0g rather than
+/// displaying a negative weight. NaN/Infinity clamps the same way rather
+/// than being passed to round(), which throws UnsupportedError for any
+/// non-finite value -- grams <= 0 alone doesn't catch NaN, since every
+/// comparison against NaN is false.
+String formatWeightGrams(double grams) =>
+    '${!grams.isFinite || grams <= 0 ? 0 : grams.round()}g';
