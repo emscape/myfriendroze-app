@@ -83,5 +83,17 @@ void main() {
     test('negative grams (malformed stored data) clamps to 0g rather than displaying a negative weight', () {
       expect(formatWeightGrams(-5), '0g');
     });
+
+    // double.round() throws UnsupportedError for non-finite values (verified
+    // against the Dart SDK directly) -- grams <= 0 is always false for NaN
+    // (NaN comparisons are always false), so without an explicit isFinite
+    // check a malformed NaN/Infinity weight would crash ProductsScreen's
+    // build instead of just displaying wrong, the same class of bug the
+    // negative-clamp fix above addresses for negative values.
+    test('non-finite grams (malformed stored data) clamps to 0g instead of throwing', () {
+      expect(formatWeightGrams(double.nan), '0g');
+      expect(formatWeightGrams(double.infinity), '0g');
+      expect(formatWeightGrams(double.negativeInfinity), '0g');
+    });
   });
 }

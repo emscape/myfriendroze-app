@@ -57,5 +57,9 @@ LbsOz gramsToLbsOz(double grams) {
 ///
 /// Negative input (malformed stored data predating validation, same case
 /// gramsToLbsOz already guards against) clamps to 0g rather than
-/// displaying a negative weight.
-String formatWeightGrams(double grams) => '${grams <= 0 ? 0 : grams.round()}g';
+/// displaying a negative weight. NaN/Infinity clamps the same way rather
+/// than being passed to round(), which throws UnsupportedError for any
+/// non-finite value -- grams <= 0 alone doesn't catch NaN, since every
+/// comparison against NaN is false.
+String formatWeightGrams(double grams) =>
+    '${!grams.isFinite || grams <= 0 ? 0 : grams.round()}g';
