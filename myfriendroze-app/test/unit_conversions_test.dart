@@ -70,10 +70,18 @@ void main() {
     test('rounds to the nearest whole gram, not truncates', () {
       expect(formatWeightGrams(680.388555), '680g');
       expect(formatWeightGrams(113.398092), '113g');
+      // Both cases above round down, which a floor()-based implementation
+      // would also produce — this one only passes for genuine
+      // nearest-integer rounding, since floor(680.5) would be 680.
+      expect(formatWeightGrams(680.5), '681g');
     });
 
     test('zero grams formats as 0g', () {
       expect(formatWeightGrams(0), '0g');
+    });
+
+    test('negative grams (malformed stored data) clamps to 0g rather than displaying a negative weight', () {
+      expect(formatWeightGrams(-5), '0g');
     });
   });
 }

@@ -54,4 +54,8 @@ LbsOz gramsToLbsOz(double grams) {
 /// showing up straight in the UI (reported bug). Sub-gram precision has no
 /// real meaning for a shipping weight anyway, so this rounds to the
 /// nearest whole gram rather than truncating.
-String formatWeightGrams(double grams) => '${grams.round()}g';
+///
+/// Negative input (malformed stored data predating validation, same case
+/// gramsToLbsOz already guards against) clamps to 0g rather than
+/// displaying a negative weight.
+String formatWeightGrams(double grams) => '${grams <= 0 ? 0 : grams.round()}g';
