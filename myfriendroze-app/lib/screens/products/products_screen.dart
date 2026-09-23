@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:intl/intl.dart';
 import '../../providers/product_provider.dart';
 import '../../models/product.dart';
 import '../../utils/unit_conversions.dart';
@@ -14,12 +17,31 @@ class ProductsScreen extends StatefulWidget {
 }
 
 class _ProductsScreenState extends State<ProductsScreen> {
+  // The Firestore products stream only emits on a data change, not on a
+  // clock transition -- without this, a product's SCHEDULED badge would
+  // keep showing past its publishAt if the admin stays on this screen
+  // through the deadline. A plain periodic rebuild is simpler than
+  // scheduling a Timer per product for each one's exact deadline, and the
+  // badge is cosmetic (the actual publish gating lives server-side in
+  // products-live.js/firestore.rules) so up to a minute of staleness here
+  // is an acceptable trade-off.
+  Timer? _scheduledBadgeRefreshTimer;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<ProductProvider>(context, listen: false).loadProducts();
     });
+    _scheduledBadgeRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _scheduledBadgeRefreshTimer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -230,6 +252,27 @@ class _ProductsScreenState extends State<ProductsScreen> {
                         'SOLD OUT',
                         style: TextStyle(
                           color: Colors.red,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                  if (product.publishAt != null &&
+                      product.publishAt!.isAfter(DateTime.now())) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.blue[50],
+                        border: Border.all(color: Colors.blue),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        'SCHEDULED: ${DateFormat('MMM d, h:mm a').format(product.publishAt!)}',
+                        style: const TextStyle(
+                          color: Colors.blue,
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
                         ),

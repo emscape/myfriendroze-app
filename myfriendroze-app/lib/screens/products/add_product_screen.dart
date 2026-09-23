@@ -3,11 +3,13 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../providers/product_provider.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../widgets/multiple_image_picker.dart';
+import '../../widgets/selector_box.dart';
 import '../../models/product.dart';
 import '../../utils/unit_conversions.dart';
 
@@ -36,6 +38,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   List<File>? _selectedImages;
   List<Uint8List>? _selectedImageBytes;
+
+  // Delayed/scheduled publish. Defaults mirror add_event_screen.dart's
+  // date/time picker defaults (tomorrow, current time-of-day).
+  bool _delayPosting = false;
+  DateTime _publishDate = DateTime.now().add(const Duration(days: 1));
+  TimeOfDay _publishTime = TimeOfDay.now();
 
   // Speech to text
   final SpeechToText _speechToText = SpeechToText();
@@ -76,6 +84,16 @@ class _AddProductScreenState extends State<AddProductScreen> {
       if (product.shippingBoxDepthIn > 0) {
         _shippingBoxDepthController.text =
             product.shippingBoxDepthIn.toString();
+      }
+      // Only prefill the delay toggle for a schedule that hasn't happened
+      // yet — a publishAt already in the past means the product is already
+      // live, and re-showing it as "delayed" would block an unrelated edit
+      // (e.g. a price change) behind the future-only validation below.
+      if (product.publishAt != null &&
+          product.publishAt!.isAfter(DateTime.now())) {
+        _delayPosting = true;
+        _publishDate = product.publishAt!;
+        _publishTime = TimeOfDay.fromDateTime(product.publishAt!);
       }
       // Note: image is not preloaded into _selectedImage; keep using existing URL unless replaced
     }
@@ -143,6 +161,63 @@ class _AddProductScreenState extends State<AddProductScreen> {
     return null;
   }
 
+  Future<void> _selectPublishDate() async {
+    final now = DateTime.now();
+    // initialDate must be on or after firstDate (now) or showDatePicker
+    // asserts — _publishDate could already be in the past from the
+    // already-live-schedule case initState skips prefilling for, but stay
+    // defensive here too.
+    final initialDate = _publishDate.isBefore(now) ? now : _publishDate;
+    // Same constraint applies to lastDate: a product already scheduled
+    // more than 365 days out (reachable by editing) would put initialDate
+    // after this fixed cap and crash showDatePicker's assertion — same fix
+    // as add_event_screen.dart's _selectDate/_selectEndDate.
+    final defaultLastDate = now.add(const Duration(days: 365));
+    final lastDate = _publishDate.isAfter(defaultLastDate) ? _publishDate : defaultLastDate;
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: now,
+      lastDate: lastDate,
+    );
+
+    if (picked != null) {
+      setState(() => _publishDate = picked);
+    }
+  }
+
+  Future<void> _selectPublishTime() async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: _publishTime,
+    );
+
+    if (picked != null) {
+      setState(() => _publishTime = picked);
+    }
+  }
+
+  DateTime get _publishDateTime {
+    return DateTime(
+      _publishDate.year,
+      _publishDate.month,
+      _publishDate.day,
+      _publishTime.hour,
+      _publishTime.minute,
+    );
+  }
+
+  // Date pickers alone can't stop a past moment: firstDate keeps the DATE
+  // from going before today, but a today's-date + earlier-time combination
+  // still slips through, e.g. picking today then a time already passed.
+  String? get _publishAtError {
+    if (!_delayPosting) return null;
+    if (!_publishDateTime.isAfter(DateTime.now())) {
+      return 'Delayed publish date/time must be in the future.';
+    }
+    return null;
+  }
+
   Future<void> _handleSubmit() async {
     if (_formKey.currentState!.validate()) {
       final productProvider =
@@ -182,6 +257,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
       final shippingBoxDepthIn =
           _parseOptionalDouble(_shippingBoxDepthController.text);
 
+      final publishAtError = _publishAtError;
+      if (publishAtError != null) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(publishAtError)));
+        return;
+      }
+
       bool success = false;
 
       if (isEditing) {
@@ -198,6 +280,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
           shippingBoxWidthIn: shippingBoxWidthIn,
           shippingBoxDepthIn: shippingBoxDepthIn,
           updatedAt: DateTime.now(),
+          publishAt: _delayPosting ? _publishDateTime : null,
+          clearPublishAt: !_delayPosting,
         );
 
         success = await productProvider.updateProduct(
@@ -217,6 +301,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
           shippingBoxHeightIn: shippingBoxHeightIn,
           shippingBoxWidthIn: shippingBoxWidthIn,
           shippingBoxDepthIn: shippingBoxDepthIn,
+          publishAt: _delayPosting ? _publishDateTime : null,
           imageFiles: _selectedImages,
           imageBytesList: _selectedImageBytes,
         );
@@ -472,7 +557,46 @@ class _AddProductScreenState extends State<AddProductScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 16),
+
+              // Delayed/scheduled publish -- product stays hidden on the
+              // public site until this date/time (see products-live.js and
+              // firestore.rules in the site repo).
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                value: _delayPosting,
+                title: const Text('Delay posting'),
+                subtitle: const Text('Hide this product until a chosen date/time'),
+                onChanged: (checked) {
+                  setState(() {
+                    _delayPosting = checked ?? false;
+                  });
+                },
+              ),
+              if (_delayPosting) ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: SelectorBox(
+                        label: 'Publish Date',
+                        value: DateFormat('MMM dd, yyyy').format(_publishDateTime),
+                        onTap: _selectPublishDate,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: SelectorBox(
+                        label: 'Publish Time',
+                        value: DateFormat('h:mm a').format(_publishDateTime),
+                        onTap: _selectPublishTime,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+              ],
+              const SizedBox(height: 16),
 
               // Error message
               Consumer<ProductProvider>(

@@ -28,6 +28,12 @@ class Product {
   // firebase/functions/lib/pricing.js — this is the admin-side control for
   // both.
   final bool inStock;
+  // Delayed/scheduled publish: when set to a future moment, the product
+  // stays hidden from the public site until then (site-side gating lives in
+  // astro/src/lib/products-live.js and firestore.rules in the site repo).
+  // Null means "publish immediately" -- the pre-existing default behavior,
+  // so every product created before this feature keeps working unchanged.
+  final DateTime? publishAt;
 
   Product({
     required this.id,
@@ -46,6 +52,7 @@ class Product {
     required this.updatedAt,
     this.isActive = true,
     this.inStock = true,
+    this.publishAt,
   });
 
   // Backwards compatibility getter
@@ -86,6 +93,7 @@ class Product {
       // Existing products predate this feature — default to purchasable,
       // matching product-mapping.js's docToProduct on the site side.
       inStock: data['inStock'] ?? true,
+      publishAt: (data['publishAt'] as Timestamp?)?.toDate(),
     );
   }
 
@@ -108,6 +116,11 @@ class Product {
       'updatedAt': Timestamp.fromDate(updatedAt),
       'isActive': isActive,
       'inStock': inStock,
+      // Explicit null (not an omitted key) when unset -- FirestoreService
+      // writes products via .update() (a merge), so an omitted key would
+      // silently fail to clear a previously-set publishAt when a schedule
+      // is cancelled. Same idiom as event.dart's link/clearLink.
+      'publishAt': publishAt != null ? Timestamp.fromDate(publishAt!) : null,
     };
   }
 
@@ -129,6 +142,9 @@ class Product {
     DateTime? updatedAt,
     bool? isActive,
     bool? inStock,
+    DateTime? publishAt,
+    // clearPublishAt opts into actually removing a previously-set schedule.
+    bool clearPublishAt = false,
   }) {
     List<String> finalImageUrls = imageUrls ?? this.imageUrls;
 
@@ -154,6 +170,7 @@ class Product {
       updatedAt: updatedAt ?? this.updatedAt,
       isActive: isActive ?? this.isActive,
       inStock: inStock ?? this.inStock,
+      publishAt: clearPublishAt ? null : (publishAt ?? this.publishAt),
     );
   }
 }
