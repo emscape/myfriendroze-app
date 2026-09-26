@@ -112,23 +112,61 @@ void main() {
 
     test('cancels the previous subscription when called again instead of accumulating listeners',
         () async {
-      await addOrder('cs_first', status: 'paid');
+      // Copilot correctly flagged the previous version of this test: two
+      // listeners converging on the same final snapshot would pass whether
+      // or not the first subscription was actually cancelled. This version
+      // proves cancellation directly via the controller's onCancel hook,
+      // and confirms events on the stale first stream no longer reach the
+      // provider once it's been replaced.
+      final controllers = <StreamController<List<Order>>>[];
+      var firstControllerCancelled = false;
 
-      provider.loadOrders();
+      final testProvider = OrderProvider(
+        shippingService: fakeShippingService,
+        ordersStreamFactory: () {
+          final index = controllers.length;
+          final controller = StreamController<List<Order>>(
+            onCancel: () {
+              if (index == 0) firstControllerCancelled = true;
+            },
+          );
+          controllers.add(controller);
+          return controller.stream;
+        },
+      );
+      addTearDown(() async {
+        for (final c in controllers) {
+          if (!c.isClosed) await c.close();
+        }
+      });
+
+      testProvider.loadOrders();
       await Future.delayed(Duration.zero);
-      provider.loadOrders();
+      expect(controllers, hasLength(1));
+
+      testProvider.loadOrders();
+      await Future.delayed(Duration.zero);
+      expect(controllers, hasLength(2));
+      expect(firstControllerCancelled, isTrue);
+
+      // The stale first stream is no longer listened to, so this event must
+      // not reach the provider.
+      final stripeOrder = Order(
+        id: 'cs_stale',
+        status: 'paid',
+        stripeSessionId: 'cs_stale',
+        stripePaymentIntentId: 'pi_stale',
+        customer: Customer(email: 'stale@example.com', name: 'Stale Buyer'),
+        items: const [],
+        total: 0,
+        currency: 'usd',
+        createdAt: DateTime(2026, 9, 20),
+        updatedAt: DateTime(2026, 9, 20),
+      );
+      controllers[0].add([stripeOrder]);
       await Future.delayed(Duration.zero);
 
-      await addOrder('cs_second', status: 'paid');
-      await Future.delayed(Duration.zero);
-
-      // If the first subscription were never cancelled, this would still
-      // pass by coincidence -- the real regression this guards against is a
-      // second call throwing or duplicating notifyListeners calls, which is
-      // exercised by simply not throwing above and ending up with exactly
-      // one copy of each order (not duplicated by two live listeners).
-      expect(provider.orders.map((o) => o.id).toSet(), {'cs_first', 'cs_second'});
-      expect(provider.orders.length, 2);
+      expect(testProvider.orders, isEmpty);
     });
   });
 
