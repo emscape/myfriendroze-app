@@ -111,6 +111,17 @@ class HomeScreen extends StatelessWidget {
                     icon: Icons.add_photo_alternate,
                     onTap: () => context.go('/gallery/add'),
                   ),
+                  // No paired "Add Order" card -- orders are created by the
+                  // Stripe webhook, not manually -- so this trails the
+                  // existing view/add pairs instead of interleaving with
+                  // them and shifting every card after it by one column.
+                  _buildActionCard(
+                    context,
+                    title: 'Orders',
+                    subtitle: 'Manage orders & shipping',
+                    icon: Icons.local_shipping,
+                    onTap: () => context.go('/orders'),
+                  ),
                 ],
               ),
             ),

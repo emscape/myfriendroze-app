@@ -1,128 +1,114 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../models/order.dart';
-import '../services/roze_api_service.dart';
+import '../services/firestore_service.dart';
+import '../services/order_shipping_service.dart';
 
-/// Provider for managing orders and order operations
 class OrderProvider extends ChangeNotifier {
-  final RozeApiService _apiService;
+  final OrderShippingService _shippingService;
+  final Stream<List<Order>> Function() _ordersStreamFactory;
 
-  OrderProvider({RozeApiService? apiService})
-      : _apiService = apiService ?? RozeApiService();
+  OrderProvider({
+    OrderShippingService? shippingService,
+    // Injectable so tests can exercise loadOrders()'s onError branch with a
+    // stream that actually errors -- FakeFirebaseFirestore's real snapshots()
+    // stream doesn't have a way to simulate a Firestore-level failure.
+    Stream<List<Order>> Function()? ordersStreamFactory,
+  })  : _shippingService = shippingService ?? OrderShippingService(),
+        _ordersStreamFactory = ordersStreamFactory ?? FirestoreService.getOrders;
 
-  // State
   List<Order> _orders = [];
-  Order? _currentOrder;
   bool _isLoading = false;
-  String? _error;
+  // Separate from _isLoading (which tracks markShipped's in-flight submit
+  // state) so a concurrent list refresh and a mark-shipped submission don't
+  // clobber each other's loading flag.
+  bool _isLoadingOrders = false;
+  String? _errorMessage;
+  // loadOrders() can be called every time OrdersScreen is opened or retried
+  // (this provider is a single long-lived instance, not recreated per
+  // screen) -- tracked so each call replaces the previous listener instead
+  // of accumulating one Firestore subscription per open (matches
+  // SavedLocationProvider's pattern).
+  StreamSubscription<List<Order>>? _subscription;
 
-  // Getters
   List<Order> get orders => _orders;
-  Order? get currentOrder => _currentOrder;
   bool get isLoading => _isLoading;
-  String? get error => _error;
-  bool get hasError => _error != null;
+  bool get isLoadingOrders => _isLoadingOrders;
+  String? get errorMessage => _errorMessage;
 
-  /// Create a new order
-  Future<bool> createOrder({
-    required Customer customer,
-    required List<OrderItem> items,
-    required double total,
-    String currency = 'USD',
-    String? notes,
-  }) async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
+  List<Order> get ordersNeedingShipping =>
+      _orders.where((order) => order.status == 'paid').toList();
 
-    try {
-      final response = await _apiService.createOrder(
-        customer: customer,
-        items: items,
-        total: total,
-        currency: currency,
-        notes: notes,
-      );
+  List<Order> get shippedOrders =>
+      _orders.where((order) => order.status == 'shipped').toList();
 
-      _currentOrder = response.order;
-      _orders.insert(0, response.order); // Add to top of list
-
-      _isLoading = false;
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _error = e.toString();
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    }
-  }
-
-  /// Fetch order by ID
-  Future<bool> fetchOrder(String orderId) async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-
-    try {
-      final order = await _apiService.getOrder(orderId);
-      _currentOrder = order;
-
-      // Update in list if exists
-      final index = _orders.indexWhere((o) => o.id == orderId);
-      if (index >= 0) {
-        _orders[index] = order;
-      } else {
-        _orders.add(order);
-      }
-
-      _isLoading = false;
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _error = e.toString();
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    }
-  }
-
-  /// Fetch all orders for authenticated user
-  Future<bool> fetchOrders() async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-
-    try {
-      _orders = await _apiService.listOrders();
-      _isLoading = false;
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _error = e.toString();
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    }
-  }
-
-  /// Clear current order
-  void clearCurrentOrder() {
-    _currentOrder = null;
-    _error = null;
+  void _setLoading(bool loading) {
+    _isLoading = loading;
     notifyListeners();
   }
 
-  /// Clear all orders
-  void clearOrders() {
-    _orders = [];
-    _currentOrder = null;
-    _error = null;
+  void _setError(String? error) {
+    _errorMessage = error;
     notifyListeners();
   }
 
-  /// Clear error
   void clearError() {
-    _error = null;
+    _setError(null);
+  }
+
+  void loadOrders() {
+    _subscription?.cancel();
+    _isLoadingOrders = true;
     notifyListeners();
+    _subscription = _ordersStreamFactory().listen(
+      (orders) {
+        _orders = orders;
+        _errorMessage = null;
+        _isLoadingOrders = false;
+        notifyListeners();
+      },
+      onError: (error) {
+        _isLoadingOrders = false;
+        _setError('Failed to load orders: $error');
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
+  }
+
+  /// Marks an order shipped via the sendOrderShippedNotification callable.
+  /// No client-side double-tap guarding -- the callable is already
+  /// idempotent (atomic Firestore transaction claim, see orderShipped.js).
+  Future<bool> markShipped(
+    String orderId, {
+    required String trackingNumber,
+    required String carrier,
+    String? trackingUrl,
+    String? estimatedDelivery,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+
+    try {
+      await _shippingService.markShipped(
+        orderId: orderId,
+        shippingDetails: {
+          'trackingNumber': trackingNumber,
+          'carrier': carrier,
+          if (trackingUrl != null) 'trackingUrl': trackingUrl,
+          if (estimatedDelivery != null) 'estimatedDelivery': estimatedDelivery,
+        },
+      );
+      _setLoading(false);
+      return true;
+    } catch (e) {
+      _isLoading = false;
+      _setError('Failed to mark order shipped: $e');
+      return false;
+    }
   }
 }

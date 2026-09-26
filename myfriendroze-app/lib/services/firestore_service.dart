@@ -4,6 +4,7 @@ import '../models/product.dart';
 import '../models/event.dart';
 import '../models/gallery_photo.dart';
 import '../models/saved_location.dart';
+import '../models/order.dart' as order_model;
 
 class FirestoreService {
   static FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -31,6 +32,10 @@ class FirestoreService {
   // Saved locations collection reference
   static CollectionReference get _savedLocationsCollection =>
       _firestore.collection('savedLocations');
+
+  // Orders collection reference
+  static CollectionReference get _ordersCollection =>
+      _firestore.collection('orders');
 
   // Product operations
   static Future<String> addProduct(Product product) async {
@@ -150,6 +155,18 @@ class FirestoreService {
         .snapshots()
         .map((snapshot) => snapshot.docs
             .map((doc) => SavedLocation.fromFirestore(doc))
+            .toList());
+  }
+
+  // Order operations — read-only. Orders are only ever written by
+  // firebase/functions (order confirmation + sendOrderShippedNotification);
+  // this app reads them live and calls that same callable to mark shipped.
+  static Stream<List<order_model.Order>> getOrders() {
+    return _ordersCollection
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => order_model.Order.fromFirestore(doc))
             .toList());
   }
 

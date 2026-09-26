@@ -9,7 +9,6 @@ import 'providers/auth_provider.dart';
 import 'providers/product_provider.dart';
 import 'providers/event_provider.dart';
 import 'providers/order_provider.dart';
-import 'providers/subscription_provider.dart';
 import 'providers/gallery_provider.dart';
 import 'providers/saved_location_provider.dart';
 import 'routes/app_router.dart';
@@ -51,7 +50,6 @@ class MyFriendRozeAdminApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ProductProvider()),
         ChangeNotifierProvider(create: (_) => EventProvider()),
         ChangeNotifierProvider(create: (_) => OrderProvider()),
-        ChangeNotifierProvider(create: (_) => SubscriptionProvider()),
         ChangeNotifierProvider(create: (_) => GalleryProvider()),
         ChangeNotifierProvider(create: (_) => SavedLocationProvider()),
       ],
