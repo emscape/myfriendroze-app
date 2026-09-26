@@ -15,6 +15,9 @@ import '../screens/profile/profile_screen.dart';
 import '../screens/gallery/gallery_screen.dart';
 import '../screens/gallery/add_gallery_photo_screen.dart';
 import '../models/gallery_photo.dart';
+import '../screens/orders/orders_screen.dart';
+import '../screens/orders/order_detail_screen.dart';
+import '../models/order.dart';
 
 class AppRouter {
   // Builds a router bound to a specific AuthProvider instance. Callers must
@@ -105,6 +108,14 @@ class AppRouter {
             }
             return const AddGalleryPhotoScreen();
           },
+        ),
+        GoRoute(
+          path: '/orders',
+          builder: (context, state) => const OrdersScreen(),
+        ),
+        GoRoute(
+          path: '/orders/detail',
+          builder: (context, state) => OrderDetailScreen(order: state.extra as Order),
         ),
       ],
     );

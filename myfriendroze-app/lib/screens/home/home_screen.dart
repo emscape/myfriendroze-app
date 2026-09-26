@@ -99,6 +99,13 @@ class HomeScreen extends StatelessWidget {
                   ),
                   _buildActionCard(
                     context,
+                    title: 'Orders',
+                    subtitle: 'Manage orders & shipping',
+                    icon: Icons.local_shipping,
+                    onTap: () => context.go('/orders'),
+                  ),
+                  _buildActionCard(
+                    context,
                     title: 'Gallery',
                     subtitle: 'Manage gallery photos',
                     icon: Icons.photo_library,
