@@ -21,7 +21,18 @@ dependencies:
   firebase_auth: ^6.0.2
   cloud_firestore: ^6.0.1
   firebase_storage: ^13.0.1
-  
+  # Pinned exactly (not ^): the FlutterFire packages must move in lockstep on
+  # their shared firebase_core_platform_interface version. 6.0.1 is the last
+  # cloud_functions release published alongside cloud_firestore 6.0.1 (both
+  # 2025-09-01, both requiring firebase_core_platform_interface ^6.0.0) --
+  # anything newer drags firebase_core_platform_interface (and therefore
+  # cloud_firestore) forward to a version whose WriteBatch.update signature
+  # fake_cloud_firestore 4.1.1 doesn't support. fake_cloud_firestore's own
+  # fix for that requires meta ^1.17.0, which
+  # conflicts with the meta 1.16.0 this Flutter SDK's flutter_test pins --
+  # revisit this pin whenever the Flutter SDK is next upgraded.
+  cloud_functions: 6.0.1
+
   # UI & Navigation
   cupertino_icons: ^1.0.2
   go_router: ^16.2.1
