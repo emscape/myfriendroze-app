@@ -115,6 +115,11 @@ class AppRouter {
         ),
         GoRoute(
           path: '/orders/detail',
+          // state.extra doesn't survive a browser refresh or a direct URL
+          // hit on the web build (there's nowhere for it to be persisted
+          // across a page reload) -- redirect back to the list instead of
+          // letting the unconditional cast below throw.
+          redirect: (context, state) => state.extra is Order ? null : '/orders',
           builder: (context, state) => OrderDetailScreen(order: state.extra as Order),
         ),
       ],

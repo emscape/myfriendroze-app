@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../models/order.dart';
 import '../services/firestore_service.dart';
@@ -5,13 +6,26 @@ import '../services/order_shipping_service.dart';
 
 class OrderProvider extends ChangeNotifier {
   final OrderShippingService _shippingService;
+  final Stream<List<Order>> Function() _ordersStreamFactory;
 
-  OrderProvider({OrderShippingService? shippingService})
-      : _shippingService = shippingService ?? OrderShippingService();
+  OrderProvider({
+    OrderShippingService? shippingService,
+    // Injectable so tests can exercise loadOrders()'s onError branch with a
+    // stream that actually errors -- FakeFirebaseFirestore's real snapshots()
+    // stream doesn't have a way to simulate a Firestore-level failure.
+    Stream<List<Order>> Function()? ordersStreamFactory,
+  })  : _shippingService = shippingService ?? OrderShippingService(),
+        _ordersStreamFactory = ordersStreamFactory ?? FirestoreService.getOrders;
 
   List<Order> _orders = [];
   bool _isLoading = false;
   String? _errorMessage;
+  // loadOrders() can be called every time OrdersScreen is opened or retried
+  // (this provider is a single long-lived instance, not recreated per
+  // screen) -- tracked so each call replaces the previous listener instead
+  // of accumulating one Firestore subscription per open (matches
+  // SavedLocationProvider's pattern).
+  StreamSubscription<List<Order>>? _subscription;
 
   List<Order> get orders => _orders;
   bool get isLoading => _isLoading;
@@ -38,15 +52,23 @@ class OrderProvider extends ChangeNotifier {
   }
 
   void loadOrders() {
-    FirestoreService.getOrders().listen(
+    _subscription?.cancel();
+    _subscription = _ordersStreamFactory().listen(
       (orders) {
         _orders = orders;
+        _errorMessage = null;
         notifyListeners();
       },
       onError: (error) {
         _setError('Failed to load orders: $error');
       },
     );
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
   }
 
   /// Marks an order shipped via the sendOrderShippedNotification callable.

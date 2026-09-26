@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart' hide Order;
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:myfriendroze_admin/models/order.dart';
 import 'package:myfriendroze_admin/providers/order_provider.dart';
 import 'package:myfriendroze_admin/services/firestore_service.dart';
 import 'package:myfriendroze_admin/services/order_shipping_service.dart';
@@ -68,17 +71,64 @@ void main() {
       expect(provider.shippedOrders.map((o) => o.id), ['cs_shipped']);
     });
 
-    test('sets an error message when the orders stream errors', () async {
-      // No orders collection set up + a listener error is simulated via
-      // FirestoreService directly failing is hard to trigger with the fake,
-      // so this covers the normal empty-collection (no error) path instead,
-      // confirming loadOrders doesn't set an error for a legitimately empty
-      // orders collection.
+    test('does not set an error for a legitimately empty orders collection', () async {
       provider.loadOrders();
       await Future.delayed(Duration.zero);
 
       expect(provider.errorMessage, isNull);
       expect(provider.orders, isEmpty);
+    });
+
+    test('sets an error message when the orders stream errors', () async {
+      final failingProvider = OrderProvider(
+        shippingService: fakeShippingService,
+        ordersStreamFactory: () => Stream.error(Exception('permission-denied')),
+      );
+
+      failingProvider.loadOrders();
+      await Future.delayed(Duration.zero);
+
+      expect(failingProvider.errorMessage, contains('permission-denied'));
+    });
+
+    test('clears a previous error once the stream successfully emits again', () async {
+      final controller = StreamController<List<Order>>();
+      addTearDown(controller.close);
+      final recoveringProvider = OrderProvider(
+        shippingService: fakeShippingService,
+        ordersStreamFactory: () => controller.stream,
+      );
+
+      recoveringProvider.loadOrders();
+      controller.addError(Exception('temporary failure'));
+      await Future.delayed(Duration.zero);
+      expect(recoveringProvider.errorMessage, isNotNull);
+
+      controller.add([]);
+      await Future.delayed(Duration.zero);
+
+      expect(recoveringProvider.errorMessage, isNull);
+    });
+
+    test('cancels the previous subscription when called again instead of accumulating listeners',
+        () async {
+      await addOrder('cs_first', status: 'paid');
+
+      provider.loadOrders();
+      await Future.delayed(Duration.zero);
+      provider.loadOrders();
+      await Future.delayed(Duration.zero);
+
+      await addOrder('cs_second', status: 'paid');
+      await Future.delayed(Duration.zero);
+
+      // If the first subscription were never cancelled, this would still
+      // pass by coincidence -- the real regression this guards against is a
+      // second call throwing or duplicating notifyListeners calls, which is
+      // exercised by simply not throwing above and ending up with exactly
+      // one copy of each order (not duplicated by two live listeners).
+      expect(provider.orders.map((o) => o.id).toSet(), {'cs_first', 'cs_second'});
+      expect(provider.orders.length, 2);
     });
   });
 

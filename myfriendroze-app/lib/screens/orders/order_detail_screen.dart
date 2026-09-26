@@ -42,9 +42,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   void _autoFillTrackingUrl() {
     if (_trackingUrlManuallyEdited) return;
     final url = buildTrackingUrl(_effectiveCarrier, _trackingNumberController.text);
-    if (url != null) {
-      _trackingUrlController.text = url;
-    }
+    // Explicitly clears to '' rather than leaving a stale value when the
+    // carrier has no known URL pattern (e.g. switched to "Other") -- an
+    // auto-filled URL for the PREVIOUS carrier would otherwise still get
+    // submitted alongside the new one.
+    _trackingUrlController.text = url ?? '';
   }
 
   Future<void> _submit() async {
@@ -196,6 +198,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                         CustomTextField(
                           controller: _otherCarrierController,
                           labelText: 'Carrier Name',
+                          validator: (value) =>
+                              (value == null || value.trim().isEmpty) ? 'Required' : null,
                         ),
                       ],
                       const SizedBox(height: 12),
