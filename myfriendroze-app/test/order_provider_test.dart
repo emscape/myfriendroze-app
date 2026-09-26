@@ -60,6 +60,37 @@ void main() {
   });
 
   group('loadOrders', () {
+    test('sets isLoadingOrders while waiting for the first snapshot, then clears it', () async {
+      final controller = StreamController<List<Order>>();
+      addTearDown(controller.close);
+      final loadingProvider = OrderProvider(
+        shippingService: fakeShippingService,
+        ordersStreamFactory: () => controller.stream,
+      );
+
+      expect(loadingProvider.isLoadingOrders, isFalse);
+
+      loadingProvider.loadOrders();
+      expect(loadingProvider.isLoadingOrders, isTrue);
+
+      controller.add([]);
+      await Future.delayed(Duration.zero);
+
+      expect(loadingProvider.isLoadingOrders, isFalse);
+    });
+
+    test('clears isLoadingOrders even when the first emission is an error', () async {
+      final failingProvider = OrderProvider(
+        shippingService: fakeShippingService,
+        ordersStreamFactory: () => Stream.error(Exception('boom')),
+      );
+
+      failingProvider.loadOrders();
+      await Future.delayed(Duration.zero);
+
+      expect(failingProvider.isLoadingOrders, isFalse);
+    });
+
     test('splits orders into needing-shipping and shipped by status', () async {
       await addOrder('cs_paid', status: 'paid');
       await addOrder('cs_shipped', status: 'shipped');

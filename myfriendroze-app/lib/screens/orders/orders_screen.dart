@@ -67,11 +67,13 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   orders: orderProvider.ordersNeedingShipping,
                   emptyMessage: 'No orders need shipping right now',
                   showDaysWaiting: true,
+                  isLoading: orderProvider.isLoadingOrders,
                 ),
                 _OrderList(
                   orders: orderProvider.shippedOrders,
                   emptyMessage: 'No shipped orders yet',
                   showDaysWaiting: false,
+                  isLoading: orderProvider.isLoadingOrders,
                 ),
               ],
             );
@@ -86,15 +88,24 @@ class _OrderList extends StatelessWidget {
   final List<Order> orders;
   final String emptyMessage;
   final bool showDaysWaiting;
+  final bool isLoading;
 
   const _OrderList({
     required this.orders,
     required this.emptyMessage,
     required this.showDaysWaiting,
+    required this.isLoading,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Distinguishes "still waiting on the first snapshot" from "the
+    // collection is genuinely empty" -- without this, a slow initial load
+    // briefly renders the empty state even when orders actually exist.
+    if (isLoading && orders.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     if (orders.isEmpty) {
       return Center(
         child: Column(
@@ -142,12 +153,17 @@ class _OrderCard extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    order.customer.name,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                  Expanded(
+                    child: Text(
+                      order.customer.name,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
                   ),
+                  const SizedBox(width: 8),
                   Text(
                     currencyFormat.format(order.total),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(

@@ -19,6 +19,10 @@ class OrderProvider extends ChangeNotifier {
 
   List<Order> _orders = [];
   bool _isLoading = false;
+  // Separate from _isLoading (which tracks markShipped's in-flight submit
+  // state) so a concurrent list refresh and a mark-shipped submission don't
+  // clobber each other's loading flag.
+  bool _isLoadingOrders = false;
   String? _errorMessage;
   // loadOrders() can be called every time OrdersScreen is opened or retried
   // (this provider is a single long-lived instance, not recreated per
@@ -29,6 +33,7 @@ class OrderProvider extends ChangeNotifier {
 
   List<Order> get orders => _orders;
   bool get isLoading => _isLoading;
+  bool get isLoadingOrders => _isLoadingOrders;
   String? get errorMessage => _errorMessage;
 
   List<Order> get ordersNeedingShipping =>
@@ -53,13 +58,17 @@ class OrderProvider extends ChangeNotifier {
 
   void loadOrders() {
     _subscription?.cancel();
+    _isLoadingOrders = true;
+    notifyListeners();
     _subscription = _ordersStreamFactory().listen(
       (orders) {
         _orders = orders;
         _errorMessage = null;
+        _isLoadingOrders = false;
         notifyListeners();
       },
       onError: (error) {
+        _isLoadingOrders = false;
         _setError('Failed to load orders: $error');
       },
     );

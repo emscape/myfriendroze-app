@@ -40,8 +40,10 @@ Order buildOrder({
 
 class _FakeOrderProvider extends OrderProvider {
   final List<Order> fakeOrders;
+  final bool fakeIsLoadingOrders;
 
-  _FakeOrderProvider(this.fakeOrders) : super(shippingService: _NoopShippingService());
+  _FakeOrderProvider(this.fakeOrders, {this.fakeIsLoadingOrders = false})
+      : super(shippingService: _NoopShippingService());
 
   @override
   List<Order> get ordersNeedingShipping =>
@@ -50,6 +52,9 @@ class _FakeOrderProvider extends OrderProvider {
   @override
   List<Order> get shippedOrders =>
       fakeOrders.where((o) => o.status == 'shipped').toList();
+
+  @override
+  bool get isLoadingOrders => fakeIsLoadingOrders;
 
   @override
   void loadOrders() {
@@ -94,5 +99,41 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('No orders'), findsOneWidget);
+  });
+
+  testWidgets('shows a loading indicator instead of the empty state before the first snapshot arrives',
+      (tester) async {
+    final provider = _FakeOrderProvider([], fakeIsLoadingOrders: true);
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<OrderProvider>.value(
+        value: provider,
+        child: const MaterialApp(home: OrdersScreen()),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.textContaining('No orders'), findsNothing);
+  });
+
+  testWidgets('a long customer name does not overflow the order card', (tester) async {
+    final provider = _FakeOrderProvider([
+      buildOrder(
+        id: 'cs_long',
+        status: 'paid',
+        customerName: 'Alexandria Montgomery-Fitzgerald the Third of Wonderland',
+      ),
+    ]);
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<OrderProvider>.value(
+        value: provider,
+        child: const MaterialApp(home: OrdersScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
   });
 }
