@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'product_category.dart';
+
 class Product {
   final String id;
   final String title;
@@ -34,6 +36,9 @@ class Product {
   // Null means "publish immediately" -- the pre-existing default behavior,
   // so every product created before this feature keeps working unchanged.
   final DateTime? publishAt;
+  // Which shop page lists this product. Null only for products created
+  // before this field existed; the site lists those as pottery.
+  final ProductCategory? category;
 
   Product({
     required this.id,
@@ -53,6 +58,7 @@ class Product {
     this.isActive = true,
     this.inStock = true,
     this.publishAt,
+    this.category,
   });
 
   // Backwards compatibility getter
@@ -94,6 +100,7 @@ class Product {
       // matching product-mapping.js's docToProduct on the site side.
       inStock: data['inStock'] ?? true,
       publishAt: (data['publishAt'] as Timestamp?)?.toDate(),
+      category: ProductCategory.fromValue(data['category'] as String?),
     );
   }
 
@@ -121,6 +128,9 @@ class Product {
       // silently fail to clear a previously-set publishAt when a schedule
       // is cancelled. Same idiom as event.dart's link/clearLink.
       'publishAt': publishAt != null ? Timestamp.fromDate(publishAt!) : null,
+      // Omitted (not null) when unset, unlike publishAt: there is no "clear
+      // the category" action, and a merge update must never erase one.
+      if (category != null) 'category': category!.value,
     };
   }
 
@@ -145,6 +155,7 @@ class Product {
     DateTime? publishAt,
     // clearPublishAt opts into actually removing a previously-set schedule.
     bool clearPublishAt = false,
+    ProductCategory? category,
   }) {
     List<String> finalImageUrls = imageUrls ?? this.imageUrls;
 
@@ -171,6 +182,7 @@ class Product {
       isActive: isActive ?? this.isActive,
       inStock: inStock ?? this.inStock,
       publishAt: clearPublishAt ? null : (publishAt ?? this.publishAt),
+      category: category ?? this.category,
     );
   }
 }
