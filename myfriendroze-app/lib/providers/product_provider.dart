@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../models/product.dart';
+import '../models/product_category.dart';
 import '../services/firestore_service.dart';
 import '../services/storage_service.dart';
 
@@ -52,6 +53,7 @@ class ProductProvider extends ChangeNotifier {
     double shippingBoxWidthIn = 0.0,
     double shippingBoxDepthIn = 0.0,
     DateTime? publishAt,
+    ProductCategory? category,
     List<File>? imageFiles,
     List<Uint8List>? imageBytesList,
     // Backwards compatibility
@@ -100,6 +102,7 @@ class ProductProvider extends ChangeNotifier {
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
         publishAt: publishAt,
+        category: category,
       );
 
       await FirestoreService.addProduct(product);

@@ -10,7 +10,9 @@ import '../../providers/product_provider.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../widgets/multiple_image_picker.dart';
 import '../../widgets/selector_box.dart';
+import '../../widgets/product_category_picker.dart';
 import '../../models/product.dart';
+import '../../models/product_category.dart';
 import '../../utils/unit_conversions.dart';
 
 class AddProductScreen extends StatefulWidget {
@@ -35,6 +37,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
   final _shippingBoxHeightController = TextEditingController();
   final _shippingBoxWidthController = TextEditingController();
   final _shippingBoxDepthController = TextEditingController();
+
+  // No default for a new product: the picker's validator makes Roze
+  // choose one. Editing prefills it in initState.
+  ProductCategory? _category;
 
   List<File>? _selectedImages;
   List<Uint8List>? _selectedImageBytes;
@@ -61,6 +67,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
       _titleController.text = product.title;
       _descriptionController.text = product.description;
       _priceController.text = product.price.toString();
+      // A product that predates categories is listed as pottery on the site,
+      // so the form shows the same, and saving the edit backfills it.
+      _category = product.category ?? ProductCategory.pottery;
       final weightLbsOz = gramsToLbsOz(product.weight);
       _weightLbsController.text = weightLbsOz.lbs.toString();
       _weightOzController.text = weightLbsOz.oz.toString();
@@ -282,6 +291,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
           updatedAt: DateTime.now(),
           publishAt: _delayPosting ? _publishDateTime : null,
           clearPublishAt: !_delayPosting,
+          category: _category,
         );
 
         success = await productProvider.updateProduct(
@@ -302,6 +312,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
           shippingBoxWidthIn: shippingBoxWidthIn,
           shippingBoxDepthIn: shippingBoxDepthIn,
           publishAt: _delayPosting ? _publishDateTime : null,
+          category: _category,
           imageFiles: _selectedImages,
           imageBytesList: _selectedImageBytes,
         );
@@ -359,6 +370,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
                   }
                   return null;
                 },
+              ),
+              const SizedBox(height: 16),
+
+              ProductCategoryPicker(
+                value: _category,
+                onChanged: (category) => setState(() => _category = category),
               ),
               const SizedBox(height: 16),
 
