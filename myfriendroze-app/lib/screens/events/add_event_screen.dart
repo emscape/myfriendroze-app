@@ -11,7 +11,7 @@ import '../../providers/event_provider.dart';
 import '../../providers/saved_location_provider.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../widgets/image_picker_box.dart';
-import '../../widgets/saved_location_chips.dart';
+import '../../widgets/saved_location_autocomplete.dart';
 import '../../widgets/selector_box.dart';
 
 class AddEventScreen extends StatefulWidget {
@@ -413,18 +413,12 @@ class _AddEventScreenState extends State<AddEventScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Saved locations — pick a frequent venue instead of retyping
-              // its address (Roze enters these herself; see
-              // SavedLocationProvider).
-              SavedLocationChips(
-                onSelected: (address) => setState(() => _locationController.text = address),
-              ),
-
-              // Location field
-              CustomTextField(
+              // Location field — dropdown of Roze's saved venue addresses
+              // (see SavedLocationProvider), or type a brand-new one-off
+              // address freely.
+              SavedLocationAutocomplete(
                 controller: _locationController,
                 labelText: 'Location',
-                enableVoice: true,
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return 'Please enter a location';
