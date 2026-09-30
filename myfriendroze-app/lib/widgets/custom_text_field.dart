@@ -12,6 +12,7 @@ class CustomTextField extends StatefulWidget {
   final Widget? prefixIcon;
   final String? Function(String?)? validator;
   final void Function(String)? onChanged;
+  final void Function(String)? onFieldSubmitted;
   final int maxLines;
   final bool enabled;
   final Iterable<String>? autofillHints;
@@ -37,6 +38,7 @@ class CustomTextField extends StatefulWidget {
     this.prefixIcon,
     this.validator,
     this.onChanged,
+    this.onFieldSubmitted,
     this.maxLines = 1,
     this.enabled = true,
     this.autofillHints,
@@ -116,6 +118,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
       keyboardType: widget.keyboardType,
       validator: widget.validator,
       onChanged: widget.onChanged,
+      onFieldSubmitted: widget.onFieldSubmitted,
       maxLines: widget.maxLines,
       enabled: widget.enabled,
       autofillHints: widget.autofillHints,

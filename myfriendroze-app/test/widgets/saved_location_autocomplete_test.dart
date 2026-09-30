@@ -24,6 +24,7 @@ void main() {
     required List<({String name, String address})> locations,
   }) async {
     final provider = SavedLocationProvider();
+    addTearDown(provider.dispose);
     for (final loc in locations) {
       await provider.addLocation(name: loc.name, address: loc.address);
     }
@@ -66,6 +67,46 @@ void main() {
 
     expect(find.text('Jackalope Pasadena'), findsOneWidget);
     expect(find.text('Common Space Brewing'), findsNothing);
+  });
+
+  testWidgets('typing part of an address filters the dropdown to that venue', (tester) async {
+    await pumpWithLocations(tester, locations: [
+      (name: 'Jackalope Pasadena', address: '123 Colorado Blvd'),
+      (name: 'Common Space Brewing', address: '456 El Segundo Blvd'),
+    ]);
+
+    await tester.enterText(find.byType(TextFormField), 'el segundo');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Common Space Brewing'), findsOneWidget);
+    expect(find.text('Jackalope Pasadena'), findsNothing);
+  });
+
+  testWidgets('saved locations that load after the field is focused still appear', (tester) async {
+    final provider = await pumpWithLocations(tester, locations: []);
+
+    await tester.tap(find.byType(TextFormField));
+    await tester.pumpAndSettle();
+    expect(find.text('Jackalope Pasadena'), findsNothing);
+
+    await provider.addLocation(name: 'Jackalope Pasadena', address: '123 Colorado Blvd');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Jackalope Pasadena'), findsOneWidget);
+    expect(controller.text, isEmpty);
+  });
+
+  testWidgets('pressing Done on the keyboard picks the highlighted saved location', (tester) async {
+    await pumpWithLocations(tester, locations: [
+      (name: 'Jackalope Pasadena', address: '123 Colorado Blvd'),
+    ]);
+
+    await tester.enterText(find.byType(TextFormField), 'Jackalope');
+    await tester.pumpAndSettle();
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+
+    expect(controller.text, '123 Colorado Blvd');
   });
 
   testWidgets('selecting a saved location fills the field with its address', (tester) async {

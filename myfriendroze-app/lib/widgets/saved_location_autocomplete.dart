@@ -33,6 +33,7 @@ class SavedLocationAutocomplete extends StatefulWidget {
 
 class _SavedLocationAutocompleteState extends State<SavedLocationAutocomplete> {
   final FocusNode _focusNode = FocusNode();
+  List<SavedLocation>? _lastLocations;
 
   @override
   void dispose() {
@@ -40,9 +41,27 @@ class _SavedLocationAutocompleteState extends State<SavedLocationAutocomplete> {
     super.dispose();
   }
 
+  // RawAutocomplete only re-runs optionsBuilder when the field's text
+  // changes, so a location list that arrives (or changes) after the field
+  // was focused would never show up until the next keystroke. It has no
+  // public refresh hook; changing the text and immediately restoring it
+  // forces a recompute against the current list. The first call's result
+  // is discarded by RawAutocomplete's own stale-call check, so the dropdown
+  // never flickers, and the restored value keeps the cursor where it was.
+  void _refreshOptions() {
+    if (!mounted) return;
+    final value = widget.controller.value;
+    widget.controller.value = value.copyWith(text: '${value.text} ');
+    widget.controller.value = value;
+  }
+
   @override
   Widget build(BuildContext context) {
     final locations = context.watch<SavedLocationProvider>().locations;
+    if (_lastLocations != null && !identical(locations, _lastLocations)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _refreshOptions());
+    }
+    _lastLocations = locations;
 
     return RawAutocomplete<SavedLocation>(
       textEditingController: widget.controller,
@@ -65,6 +84,8 @@ class _SavedLocationAutocompleteState extends State<SavedLocationAutocomplete> {
           labelText: widget.labelText,
           enableVoice: true,
           validator: widget.validator,
+          // Lets Enter/Done accept the highlighted suggestion.
+          onFieldSubmitted: (_) => onFieldSubmitted(),
         );
       },
       optionsViewBuilder: (context, onSelected, options) {
