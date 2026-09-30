@@ -3,6 +3,7 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 class CustomTextField extends StatefulWidget {
   final TextEditingController controller;
+  final FocusNode? focusNode;
   final String labelText;
   final String? hintText;
   final bool obscureText;
@@ -27,6 +28,7 @@ class CustomTextField extends StatefulWidget {
   const CustomTextField({
     super.key,
     required this.controller,
+    this.focusNode,
     required this.labelText,
     this.hintText,
     this.obscureText = false,
@@ -109,6 +111,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
 
     return TextFormField(
       controller: widget.controller,
+      focusNode: widget.focusNode,
       obscureText: widget.obscureText,
       keyboardType: widget.keyboardType,
       validator: widget.validator,
