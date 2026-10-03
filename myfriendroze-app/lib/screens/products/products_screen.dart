@@ -243,6 +243,14 @@ class _ProductsScreenState extends State<ProductsScreen> {
                         ),
                       ],
                     ),
+                    if (product.stockQuantity != null &&
+                        product.stockQuantity! > 0) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        '${product.stockQuantity} in stock',
+                        style: TextStyle(color: Colors.grey[700]),
+                      ),
+                    ],
                     if (!product.inStock) ...[
                       const SizedBox(height: 8),
                       Container(

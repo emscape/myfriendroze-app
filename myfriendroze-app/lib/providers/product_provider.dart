@@ -54,6 +54,8 @@ class ProductProvider extends ChangeNotifier {
     double shippingBoxDepthIn = 0.0,
     DateTime? publishAt,
     ProductCategory? category,
+    int? stockQuantity,
+    bool inStock = true,
     List<File>? imageFiles,
     List<Uint8List>? imageBytesList,
     // Backwards compatibility
@@ -103,6 +105,8 @@ class ProductProvider extends ChangeNotifier {
         updatedAt: DateTime.now(),
         publishAt: publishAt,
         category: category,
+        stockQuantity: stockQuantity,
+        inStock: inStock,
       );
 
       await FirestoreService.addProduct(product);
