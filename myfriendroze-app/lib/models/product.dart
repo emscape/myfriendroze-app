@@ -39,6 +39,10 @@ class Product {
   // Which shop page lists this product. Null only for products created
   // before this field existed; the site lists those as pottery.
   final ProductCategory? category;
+  // How many are left, for plants (lib/utils/stock_count.dart). Null means
+  // untracked: one-of-a-kind pieces, and products saved before this field
+  // existed. The site's checkout counts it down after payment.
+  final int? stockQuantity;
 
   Product({
     required this.id,
@@ -59,6 +63,7 @@ class Product {
     this.inStock = true,
     this.publishAt,
     this.category,
+    this.stockQuantity,
   });
 
   // Backwards compatibility getter
@@ -101,6 +106,7 @@ class Product {
       inStock: data['inStock'] ?? true,
       publishAt: (data['publishAt'] as Timestamp?)?.toDate(),
       category: ProductCategory.fromValue(data['category'] as String?),
+      stockQuantity: (data['stockQuantity'] as num?)?.toInt(),
     );
   }
 
@@ -131,6 +137,9 @@ class Product {
       // Omitted (not null) when unset, unlike publishAt: there is no "clear
       // the category" action, and a merge update must never erase one.
       if (category != null) 'category': category!.value,
+      // Explicit null when untracked, like publishAt, so a merge update
+      // clears a count when a product stops being tracked.
+      'stockQuantity': stockQuantity,
     };
   }
 
@@ -156,6 +165,9 @@ class Product {
     // clearPublishAt opts into actually removing a previously-set schedule.
     bool clearPublishAt = false,
     ProductCategory? category,
+    int? stockQuantity,
+    // clearStockQuantity opts into removing a previously-set count.
+    bool clearStockQuantity = false,
   }) {
     List<String> finalImageUrls = imageUrls ?? this.imageUrls;
 
@@ -183,6 +195,8 @@ class Product {
       inStock: inStock ?? this.inStock,
       publishAt: clearPublishAt ? null : (publishAt ?? this.publishAt),
       category: category ?? this.category,
+      stockQuantity:
+          clearStockQuantity ? null : (stockQuantity ?? this.stockQuantity),
     );
   }
 }

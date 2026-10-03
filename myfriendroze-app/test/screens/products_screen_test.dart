@@ -65,6 +65,38 @@ Widget buildApp(ProductProvider provider) {
 }
 
 void main() {
+  // The site treats a count of 0 as sold out whatever inStock says (e.g.
+  // after "Mark In Stock" on a plant with none left), so the list does too.
+  testWidgets('shows SOLD OUT for a plant with a count of 0, even if marked in stock', (
+    tester,
+  ) async {
+    final provider = _FakeProductProvider([
+      buildProduct(id: 'p1', title: 'Aloe').copyWith(stockQuantity: 0, inStock: true),
+    ]);
+
+    await tester.pumpWidget(buildApp(provider));
+    await tester.pumpAndSettle();
+
+    expect(find.text('SOLD OUT'), findsOneWidget);
+  });
+
+  testWidgets("shows a tracked plant's stock count, including 0", (
+    tester,
+  ) async {
+    final provider = _FakeProductProvider([
+      buildProduct(id: 'p1', title: 'Aloe').copyWith(stockQuantity: 0, inStock: false),
+      buildProduct(id: 'p2', title: 'Fern').copyWith(stockQuantity: 4),
+      buildProduct(id: 'p3', title: 'Blue Mug'),
+    ]);
+
+    await tester.pumpWidget(buildApp(provider));
+    await tester.pumpAndSettle();
+
+    expect(find.text('0 in stock'), findsOneWidget);
+    expect(find.text('4 in stock'), findsOneWidget);
+    expect(find.textContaining('in stock'), findsNWidgets(2));
+  });
+
   testWidgets('tapping a product card opens that product for editing', (
     tester,
   ) async {

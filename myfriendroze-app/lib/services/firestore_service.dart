@@ -55,6 +55,21 @@ class FirestoreService {
     }
   }
 
+  /// Sets only inStock (and updatedAt), not the whole product: the site's
+  /// checkout may have counted stockQuantity down since the caller's copy
+  /// was loaded, and a full write would put the old count back.
+  static Future<void> setProductInStock(
+      String productId, bool inStock, DateTime updatedAt) async {
+    try {
+      await _productsCollection.doc(productId).update({
+        'inStock': inStock,
+        'updatedAt': Timestamp.fromDate(updatedAt),
+      });
+    } catch (e) {
+      throw Exception('Failed to update product: $e');
+    }
+  }
+
   static Future<void> deleteProduct(String productId) async {
     try {
       await _productsCollection.doc(productId).delete();

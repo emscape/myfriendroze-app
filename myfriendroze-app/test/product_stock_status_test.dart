@@ -137,6 +137,33 @@ void main() {
       );
     });
 
+    // The list's Product can be stale: the site's checkout may have
+    // counted stock down since it loaded. The toggle must not write that
+    // old count back.
+    test('leaves a stock count changed since the list loaded alone', () async {
+      final loaded = Product(
+        id: 'p1',
+        title: 'Aloe',
+        description: 'A small aloe',
+        price: 8,
+        weight: 300,
+        stockQuantity: 5,
+        imageUrls: const [],
+        createdAt: DateTime(2026, 1, 1),
+        updatedAt: DateTime(2026, 1, 1),
+      );
+      await fakeFirestore
+          .collection('products')
+          .doc('p1')
+          .set(loaded.copyWith(stockQuantity: 2).toFirestore());
+
+      await provider.setInStock(loaded, false);
+
+      final doc = await fakeFirestore.collection('products').doc('p1').get();
+      expect(doc.data()!['inStock'], isFalse);
+      expect(doc.data()!['stockQuantity'], 2);
+    });
+
     test('marking a product back in stock reverses the flag', () async {
       final existing = Product(
         id: 'p1',

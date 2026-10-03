@@ -15,6 +15,7 @@ import '../../widgets/shipping_estimate_panel.dart';
 import '../../services/shipping_estimate_service.dart';
 import '../../models/product.dart';
 import '../../models/product_category.dart';
+import '../../utils/stock_count.dart';
 import '../../utils/unit_conversions.dart';
 
 class AddProductScreen extends StatefulWidget {
@@ -42,6 +43,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
   final _shippingBoxHeightController = TextEditingController();
   final _shippingBoxWidthController = TextEditingController();
   final _shippingBoxDepthController = TextEditingController();
+  // Plants only; blank means untracked (utils/stock_count.dart).
+  final _stockController = TextEditingController();
 
   // No default for a new product: the picker's validator makes Roze
   // choose one. Editing prefills it in initState.
@@ -75,6 +78,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
       // A product that predates categories is listed as pottery on the site,
       // so the form shows the same, and saving the edit backfills it.
       _category = product.category ?? ProductCategory.pottery;
+      if (product.stockQuantity != null) {
+        _stockController.text = product.stockQuantity.toString();
+      }
       final weightLbsOz = gramsToLbsOz(product.weight);
       _weightLbsController.text = weightLbsOz.lbs.toString();
       _weightOzController.text = weightLbsOz.oz.toString();
@@ -126,6 +132,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
     _shippingBoxHeightController.dispose();
     _shippingBoxWidthController.dispose();
     _shippingBoxDepthController.dispose();
+    _stockController.dispose();
     super.dispose();
   }
 
@@ -308,11 +315,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
         return;
       }
 
+      final stock = stockUpdateFor(_category, _stockController.text);
+
       bool success = false;
 
       if (isEditing) {
         final existing = widget.productToEdit!;
-        final updatedProduct = existing.copyWith(
+        final edited = existing.copyWith(
           title: title,
           description: description,
           price: price,
@@ -328,6 +337,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
           clearPublishAt: !_delayPosting,
           category: _category,
         );
+        final updatedProduct = applyStockUpdate(edited, stock);
 
         success = await productProvider.updateProduct(
           updatedProduct,
@@ -348,6 +358,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
           shippingBoxDepthIn: shippingBoxDepthIn,
           publishAt: _delayPosting ? _publishDateTime : null,
           category: _category,
+          stockQuantity: stock.stockQuantity,
+          inStock: stock.inStock ?? true,
           imageFiles: _selectedImages,
           imageBytesList: _selectedImageBytes,
         );
@@ -413,6 +425,17 @@ class _AddProductScreenState extends State<AddProductScreen> {
                 onChanged: (category) => setState(() => _category = category),
               ),
               const SizedBox(height: 16),
+
+              if (_category == ProductCategory.plant) ...[
+                CustomTextField(
+                  controller: _stockController,
+                  labelText: stockCountLabel,
+                  hintText: 'Leave blank to not track',
+                  keyboardType: TextInputType.number,
+                  validator: validateStockCount,
+                ),
+                const SizedBox(height: 16),
+              ],
 
               // Description field with speech-to-text
               CustomTextField(
