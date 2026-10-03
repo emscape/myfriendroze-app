@@ -139,201 +139,207 @@ class _ProductsScreenState extends State<ProductsScreen> {
       BuildContext context, Product product, ProductProvider provider) {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Product images - show primary image with indicator for multiple
-            Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: product.imageUrls.isNotEmpty
-                      ? CachedNetworkImage(
-                          imageUrl: product.imageUrls.first,
-                          width: 80,
-                          height: 80,
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => Container(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        // Tapping anywhere on the card edits the product; the menu on the
+        // right keeps the stock toggle and delete.
+        onTap: () => context.go('/products/add', extra: product),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Product images - show primary image with indicator for multiple
+              Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: product.imageUrls.isNotEmpty
+                        ? CachedNetworkImage(
+                            imageUrl: product.imageUrls.first,
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => Container(
+                              width: 80,
+                              height: 80,
+                              color: Colors.grey[300],
+                              child: const Icon(Icons.image),
+                            ),
+                            errorWidget: (context, url, error) => Container(
+                              width: 80,
+                              height: 80,
+                              color: Colors.grey[300],
+                              child: const Icon(Icons.broken_image),
+                            ),
+                          )
+                        : Container(
                             width: 80,
                             height: 80,
                             color: Colors.grey[300],
                             child: const Icon(Icons.image),
                           ),
-                          errorWidget: (context, url, error) => Container(
-                            width: 80,
-                            height: 80,
-                            color: Colors.grey[300],
-                            child: const Icon(Icons.broken_image),
+                  ),
+                  // Multiple images indicator
+                  if (product.imageUrls.length > 1)
+                    Positioned(
+                      bottom: 4,
+                      right: 4,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.7),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '+${product.imageUrls.length - 1}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
                           ),
-                        )
-                      : Container(
-                          width: 80,
-                          height: 80,
-                          color: Colors.grey[300],
-                          child: const Icon(Icons.image),
-                        ),
-                ),
-                // Multiple images indicator
-                if (product.imageUrls.length > 1)
-                  Positioned(
-                    bottom: 4,
-                    right: 4,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.7),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '+${product.imageUrls.length - 1}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
-                  ),
-              ],
-            ),
-            const SizedBox(width: 16),
-
-            // Product details
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    product.title,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    product.description,
-                    style: TextStyle(color: Colors.grey[600]),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Text(
-                        '\$${product.price.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF2E7D32),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Text(
-                        formatWeightGrams(product.weight),
-                        style: TextStyle(color: Colors.grey[600]),
-                      ),
-                    ],
-                  ),
-                  if (!product.inStock) ...[
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.red[50],
-                        border: Border.all(color: Colors.red),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Text(
-                        'SOLD OUT',
-                        style: TextStyle(
-                          color: Colors.red,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                  if (product.publishAt != null &&
-                      product.publishAt!.isAfter(DateTime.now())) ...[
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.blue[50],
-                        border: Border.all(color: Colors.blue),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        'SCHEDULED: ${DateFormat('MMM d, h:mm a').format(product.publishAt!)}',
-                        style: const TextStyle(
-                          color: Colors.blue,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
                 ],
               ),
-            ),
+              const SizedBox(width: 16),
 
-            // Actions
-            PopupMenuButton<String>(
-              onSelected: (value) async {
-                if (value == 'delete') {
-                  final confirmed = await _showDeleteConfirmation(context);
-                  if (confirmed) {
-                    provider.deleteProduct(product);
+              // Product details
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      product.title,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      product.description,
+                      style: TextStyle(color: Colors.grey[600]),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Text(
+                          '\$${product.price.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF2E7D32),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Text(
+                          formatWeightGrams(product.weight),
+                          style: TextStyle(color: Colors.grey[600]),
+                        ),
+                      ],
+                    ),
+                    if (!product.inStock) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.red[50],
+                          border: Border.all(color: Colors.red),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          'SOLD OUT',
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                    if (product.publishAt != null &&
+                        product.publishAt!.isAfter(DateTime.now())) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.blue[50],
+                          border: Border.all(color: Colors.blue),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'SCHEDULED: ${DateFormat('MMM d, h:mm a').format(product.publishAt!)}',
+                          style: const TextStyle(
+                            color: Colors.blue,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+
+              // Actions
+              PopupMenuButton<String>(
+                onSelected: (value) async {
+                  if (value == 'delete') {
+                    final confirmed = await _showDeleteConfirmation(context);
+                    if (confirmed) {
+                      provider.deleteProduct(product);
+                    }
+                  } else if (value == 'edit') {
+                    // Navigate to add/edit product screen with the product as extra
+                    context.go('/products/add', extra: product);
+                  } else if (value == 'toggleStock') {
+                    provider.setInStock(product, !product.inStock);
                   }
-                } else if (value == 'edit') {
-                  // Navigate to add/edit product screen with the product as extra
-                  context.go('/products/add', extra: product);
-                } else if (value == 'toggleStock') {
-                  provider.setInStock(product, !product.inStock);
-                }
-              },
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'edit',
-                  child: Row(
-                    children: [
-                      Icon(Icons.edit),
-                      SizedBox(width: 8),
-                      Text('Edit'),
-                    ],
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'edit',
+                    child: Row(
+                      children: [
+                        Icon(Icons.edit),
+                        SizedBox(width: 8),
+                        Text('Edit'),
+                      ],
+                    ),
                   ),
-                ),
-                PopupMenuItem(
-                  value: 'toggleStock',
-                  child: Row(
-                    children: [
-                      Icon(product.inStock
-                          ? Icons.remove_shopping_cart
-                          : Icons.shopping_cart),
-                      const SizedBox(width: 8),
-                      Text(product.inStock ? 'Mark Sold Out' : 'Mark In Stock'),
-                    ],
+                  PopupMenuItem(
+                    value: 'toggleStock',
+                    child: Row(
+                      children: [
+                        Icon(product.inStock
+                            ? Icons.remove_shopping_cart
+                            : Icons.shopping_cart),
+                        const SizedBox(width: 8),
+                        Text(product.inStock ? 'Mark Sold Out' : 'Mark In Stock'),
+                      ],
+                    ),
                   ),
-                ),
-                const PopupMenuItem(
-                  value: 'delete',
-                  child: Row(
-                    children: [
-                      Icon(Icons.delete, color: Colors.red),
-                      SizedBox(width: 8),
-                      Text('Delete', style: TextStyle(color: Colors.red)),
-                    ],
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete, color: Colors.red),
+                        SizedBox(width: 8),
+                        Text('Delete', style: TextStyle(color: Colors.red)),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
