@@ -250,7 +250,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
                         style: TextStyle(color: Colors.grey[700]),
                       ),
                     ],
-                    if (!product.inStock) ...[
+                    // A count of 0 is sold out on the site whatever inStock says.
+                    if (!product.inStock || product.stockQuantity == 0) ...[
                       const SizedBox(height: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
