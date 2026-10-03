@@ -176,7 +176,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
     final heightIn = _parseOptionalDouble(_shippingBoxHeightController.text);
     final widthIn = _parseOptionalDouble(_shippingBoxWidthController.text);
     final depthIn = _parseOptionalDouble(_shippingBoxDepthController.text);
-    if (weightGrams <= 0 || heightIn <= 0 || widthIn <= 0 || depthIn <= 0) {
+    // tryParse accepts "NaN" and "Infinity", and NaN <= 0 is false, so a
+    // plain > 0 check would let them through to the callable.
+    bool usable(double value) => value.isFinite && value > 0;
+    if (![weightGrams, heightIn, widthIn, depthIn].every(usable)) {
       return null;
     }
     return ParcelInput(

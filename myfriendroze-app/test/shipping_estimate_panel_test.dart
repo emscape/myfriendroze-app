@@ -152,4 +152,36 @@ void main() {
     expect([parcel.lengthIn, parcel.widthIn, parcel.heightIn], [12, 10, 8]);
     expect(find.text('Suggested shipping to build into the price: \$14'), findsOneWidget);
   });
+
+  for (final (label, bad) in [('Weight (lbs)', 'NaN'), ('Box height (in)', 'Infinity')]) {
+    testWidgets('the product form treats "$bad" in $label as missing instead of calling', (tester) async {
+      final estimator = FakeEstimator(result: _estimate);
+      await tester.pumpWidget(
+        ChangeNotifierProvider<ProductProvider>(
+          create: (_) => ProductProvider(),
+          child: MaterialApp(home: AddProductScreen(shippingEstimator: estimator)),
+        ),
+      );
+
+      final values = {
+        'Weight (lbs)': '3',
+        'Weight (oz)': '0',
+        'Box height (in)': '8',
+        'Box width (in)': '10',
+        'Box depth (in)': '12',
+        label: bad,
+      };
+      for (final entry in values.entries) {
+        final field = find.widgetWithText(TextFormField, entry.key);
+        await tester.ensureVisible(field);
+        await tester.enterText(field, entry.value);
+      }
+      await tester.ensureVisible(find.text('Estimate shipping'));
+      await tester.tap(find.text('Estimate shipping'));
+      await tester.pumpAndSettle();
+
+      expect(estimator.calls, isEmpty);
+      expect(find.text('Enter the weight and all three box sizes first.'), findsOneWidget);
+    });
+  }
 }
