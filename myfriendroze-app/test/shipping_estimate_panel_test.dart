@@ -153,8 +153,14 @@ void main() {
     expect(find.text('Suggested shipping to build into the price: \$14'), findsOneWidget);
   });
 
-  for (final (label, bad) in [('Weight (lbs)', 'NaN'), ('Box height (in)', 'Infinity')]) {
-    testWidgets('the product form treats "$bad" in $label as missing instead of calling', (tester) async {
+  for (final bad in [
+    {'Weight (lbs)': 'NaN'},
+    {'Box height (in)': 'Infinity'},
+    // The total is positive, but the form itself rejects each value.
+    {'Weight (lbs)': '-1', 'Weight (oz)': '20'},
+    {'Weight (oz)': '16'},
+  ]) {
+    testWidgets('the product form treats $bad as missing instead of calling', (tester) async {
       final estimator = FakeEstimator(result: _estimate);
       await tester.pumpWidget(
         ChangeNotifierProvider<ProductProvider>(
@@ -169,7 +175,7 @@ void main() {
         'Box height (in)': '8',
         'Box width (in)': '10',
         'Box depth (in)': '12',
-        label: bad,
+        ...bad,
       };
       for (final entry in values.entries) {
         final field = find.widgetWithText(TextFormField, entry.key);

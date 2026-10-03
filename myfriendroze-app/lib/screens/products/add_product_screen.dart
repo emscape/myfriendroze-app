@@ -170,8 +170,15 @@ class _AddProductScreenState extends State<AddProductScreen> {
   /// The weight and shipping box size as entered, or null if any is
   /// missing -- what "Estimate shipping" quotes.
   ParcelInput? _parcelFromForm() {
-    final lbs = double.tryParse(_weightLbsController.text.trim()) ?? 0.0;
-    final oz = double.tryParse(_weightOzController.text.trim()) ?? 0.0;
+    // Same rules as the weight fields' validators: a blank field is 0,
+    // lbs is 0 or more, oz is 0-15. Checking only the total would let
+    // e.g. -1 lb + 20 oz through.
+    final lbsText = _weightLbsController.text.trim();
+    final ozText = _weightOzController.text.trim();
+    final lbs = lbsText.isEmpty ? 0.0 : double.tryParse(lbsText);
+    final oz = ozText.isEmpty ? 0.0 : double.tryParse(ozText);
+    if (lbs == null || !lbs.isFinite || lbs < 0) return null;
+    if (oz == null || !oz.isFinite || oz < 0 || oz >= 16) return null;
     final weightGrams = lbsOzToGrams(lbs, oz);
     final heightIn = _parseOptionalDouble(_shippingBoxHeightController.text);
     final widthIn = _parseOptionalDouble(_shippingBoxWidthController.text);
