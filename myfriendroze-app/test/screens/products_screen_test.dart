@@ -1,0 +1,102 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+
+import 'package:myfriendroze_admin/models/product.dart';
+import 'package:myfriendroze_admin/providers/product_provider.dart';
+import 'package:myfriendroze_admin/screens/products/products_screen.dart';
+
+Product buildProduct({required String id, required String title}) {
+  final now = DateTime(2026, 10, 1);
+  return Product(
+    id: id,
+    title: title,
+    description: 'A handmade piece',
+    price: 40.0,
+    weight: 500.0,
+    imageUrls: const [],
+    createdAt: now,
+    updatedAt: now,
+  );
+}
+
+class _FakeProductProvider extends ProductProvider {
+  final List<Product> fakeProducts;
+
+  _FakeProductProvider(this.fakeProducts);
+
+  @override
+  List<Product> get products => fakeProducts;
+
+  @override
+  void loadProducts() {
+    // No-op: this test injects products directly rather than through Firestore.
+  }
+}
+
+/// ProductsScreen inside a router whose edit route shows which product it
+/// was handed, so a test can tell where a tap went.
+Widget buildApp(ProductProvider provider) {
+  final router = GoRouter(
+    initialLocation: '/products',
+    routes: [
+      GoRoute(
+        path: '/products',
+        builder: (context, state) => const ProductsScreen(),
+      ),
+      GoRoute(
+        path: '/products/add',
+        builder: (context, state) {
+          final extra = state.extra;
+          return Scaffold(
+            body: Text(
+              extra is Product ? 'Editing ${extra.title}' : 'Adding new',
+            ),
+          );
+        },
+      ),
+    ],
+  );
+  return ChangeNotifierProvider<ProductProvider>.value(
+    value: provider,
+    child: MaterialApp.router(routerConfig: router),
+  );
+}
+
+void main() {
+  testWidgets('tapping a product card opens that product for editing', (
+    tester,
+  ) async {
+    final provider = _FakeProductProvider([
+      buildProduct(id: 'p1', title: 'Blue Mug'),
+      buildProduct(id: 'p2', title: 'Green Vase'),
+    ]);
+
+    await tester.pumpWidget(buildApp(provider));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Green Vase'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Editing Green Vase'), findsOneWidget);
+  });
+
+  testWidgets('the card menu still opens its actions instead of editing', (
+    tester,
+  ) async {
+    final provider = _FakeProductProvider([
+      buildProduct(id: 'p1', title: 'Blue Mug'),
+    ]);
+
+    await tester.pumpWidget(buildApp(provider));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(PopupMenuButton<String>));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Mark Sold Out'), findsOneWidget);
+    expect(find.text('Delete'), findsOneWidget);
+    expect(find.textContaining('Editing'), findsNothing);
+  });
+}

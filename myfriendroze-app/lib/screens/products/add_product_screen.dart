@@ -11,6 +11,8 @@ import '../../widgets/custom_text_field.dart';
 import '../../widgets/multiple_image_picker.dart';
 import '../../widgets/selector_box.dart';
 import '../../widgets/product_category_picker.dart';
+import '../../widgets/shipping_estimate_panel.dart';
+import '../../services/shipping_estimate_service.dart';
 import '../../models/product.dart';
 import '../../models/product_category.dart';
 import '../../utils/unit_conversions.dart';
@@ -18,7 +20,10 @@ import '../../utils/unit_conversions.dart';
 class AddProductScreen extends StatefulWidget {
   final Product? productToEdit;
 
-  const AddProductScreen({super.key, this.productToEdit});
+  /// Where "Estimate shipping" gets its quotes; tests pass a fake.
+  final ShippingEstimator? shippingEstimator;
+
+  const AddProductScreen({super.key, this.productToEdit, this.shippingEstimator});
 
   @override
   State<AddProductScreen> createState() => _AddProductScreenState();
@@ -160,6 +165,36 @@ class _AddProductScreenState extends State<AddProductScreen> {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return 0.0;
     return double.tryParse(trimmed) ?? 0.0;
+  }
+
+  /// The weight and shipping box size as entered, or null if any is
+  /// missing -- what "Estimate shipping" quotes.
+  ParcelInput? _parcelFromForm() {
+    // Same rules as the weight fields' validators: a blank field is 0,
+    // lbs is 0 or more, oz is 0-15. Checking only the total would let
+    // e.g. -1 lb + 20 oz through.
+    final lbsText = _weightLbsController.text.trim();
+    final ozText = _weightOzController.text.trim();
+    final lbs = lbsText.isEmpty ? 0.0 : double.tryParse(lbsText);
+    final oz = ozText.isEmpty ? 0.0 : double.tryParse(ozText);
+    if (lbs == null || !lbs.isFinite || lbs < 0) return null;
+    if (oz == null || !oz.isFinite || oz < 0 || oz >= 16) return null;
+    final weightGrams = lbsOzToGrams(lbs, oz);
+    final heightIn = _parseOptionalDouble(_shippingBoxHeightController.text);
+    final widthIn = _parseOptionalDouble(_shippingBoxWidthController.text);
+    final depthIn = _parseOptionalDouble(_shippingBoxDepthController.text);
+    // tryParse accepts "NaN" and "Infinity", and NaN <= 0 is false, so a
+    // plain > 0 check would let them through to the callable.
+    bool usable(double value) => value.isFinite && value > 0;
+    if (![weightGrams, heightIn, widthIn, depthIn].every(usable)) {
+      return null;
+    }
+    return ParcelInput(
+      weightGrams: weightGrams,
+      lengthIn: depthIn,
+      widthIn: widthIn,
+      heightIn: heightIn,
+    );
   }
 
   String? _validateOptionalPositive(String? value) {
@@ -573,6 +608,11 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 12),
+              ShippingEstimatePanel(
+                estimator: widget.shippingEstimator ?? ShippingEstimateService(),
+                readParcel: _parcelFromForm,
               ),
               const SizedBox(height: 16),
 
