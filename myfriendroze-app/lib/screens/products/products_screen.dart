@@ -243,8 +243,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                         ),
                       ],
                     ),
-                    if (product.stockQuantity != null &&
-                        product.stockQuantity! > 0) ...[
+                    if (product.stockQuantity != null) ...[
                       const SizedBox(height: 8),
                       Text(
                         '${product.stockQuantity} in stock',

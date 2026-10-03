@@ -187,11 +187,8 @@ class ProductProvider extends ChangeNotifier {
       _setLoading(true);
       _setError(null);
 
-      final updated = product.copyWith(
-        inStock: inStock,
-        updatedAt: DateTime.now(),
-      );
-      await FirestoreService.updateProduct(updated);
+      await FirestoreService.setProductInStock(
+          product.id, inStock, DateTime.now());
 
       _setLoading(false);
       return true;
