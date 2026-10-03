@@ -7,12 +7,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:firebase_storage_mocks/firebase_storage_mocks.dart';
 import 'package:provider/provider.dart';
 
 import 'package:myfriendroze_admin/models/product.dart';
 import 'package:myfriendroze_admin/models/product_category.dart';
 import 'package:myfriendroze_admin/providers/product_provider.dart';
 import 'package:myfriendroze_admin/screens/products/add_product_screen.dart';
+import 'package:myfriendroze_admin/services/firestore_service.dart';
+import 'package:myfriendroze_admin/services/storage_service.dart';
 import 'package:myfriendroze_admin/utils/stock_count.dart';
 
 Product _product({ProductCategory? category, int? stockQuantity}) => Product(
@@ -93,6 +96,91 @@ void main() {
         expect(update.stockQuantity, isNull);
         expect(update.inStock, isNull);
       }
+    });
+  });
+
+  // What an edit saves: the form's stock field applied to the product
+  // being edited.
+  group('applyStockUpdate', () {
+    Product editAs(ProductCategory category, String text, {int? stock = 5, bool inStock = true}) =>
+        applyStockUpdate(
+          _product(category: ProductCategory.plant, stockQuantity: stock).copyWith(inStock: inStock),
+          stockUpdateFor(category, text),
+        );
+
+    test('a new count replaces the old one and puts the plant in stock', () {
+      final saved = editAs(ProductCategory.plant, '3', inStock: false);
+
+      expect(saved.stockQuantity, 3);
+      expect(saved.inStock, isTrue);
+    });
+
+    test('a count of 0 is saved and marks the plant sold out', () {
+      final saved = editAs(ProductCategory.plant, '0');
+
+      expect(saved.stockQuantity, 0);
+      expect(saved.inStock, isFalse);
+    });
+
+    test('a blank count stops tracking and leaves in-stock as it was', () {
+      final saved = editAs(ProductCategory.plant, '', inStock: false);
+
+      expect(saved.stockQuantity, isNull);
+      expect(saved.inStock, isFalse);
+    });
+
+    test('switching away from Plant clears the count', () {
+      final saved = editAs(ProductCategory.pottery, '5');
+
+      expect(saved.stockQuantity, isNull);
+      expect(saved.inStock, isTrue);
+    });
+  });
+
+  group('ProductProvider.addProduct', () {
+    late FakeFirebaseFirestore fakeFirestore;
+
+    setUp(() {
+      fakeFirestore = FakeFirebaseFirestore();
+      FirestoreService.setFirestoreInstance(fakeFirestore);
+      StorageService.setStorageInstance(MockFirebaseStorage());
+    });
+
+    Future<Map<String, dynamic>> add(StockUpdate update) async {
+      final ok = await ProductProvider().addProduct(
+        title: 'Aloe',
+        description: 'A small aloe',
+        price: 8,
+        weight: 300,
+        category: ProductCategory.plant,
+        stockQuantity: update.stockQuantity,
+        inStock: update.inStock ?? true,
+      );
+      expect(ok, isTrue);
+      final docs = (await fakeFirestore.collection('products').get()).docs;
+      expect(docs, hasLength(1));
+      return docs.single.data();
+    }
+
+    test("saves a new plant's count, in stock", () async {
+      final data = await add(stockUpdateFor(ProductCategory.plant, '6'));
+
+      expect(data['stockQuantity'], 6);
+      expect(data['inStock'], isTrue);
+    });
+
+    test('saves a new plant with 0 as sold out', () async {
+      final data = await add(stockUpdateFor(ProductCategory.plant, '0'));
+
+      expect(data['stockQuantity'], 0);
+      expect(data['inStock'], isFalse);
+    });
+
+    test('saves a new plant left blank as untracked and in stock', () async {
+      final data = await add(stockUpdateFor(ProductCategory.plant, ''));
+
+      expect(data['stockQuantity'], isNull);
+      expect(data['inStock'], isTrue);
     });
   });
 

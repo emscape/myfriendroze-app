@@ -321,7 +321,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
       if (isEditing) {
         final existing = widget.productToEdit!;
-        final updatedProduct = existing.copyWith(
+        final edited = existing.copyWith(
           title: title,
           description: description,
           price: price,
@@ -336,10 +336,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
           publishAt: _delayPosting ? _publishDateTime : null,
           clearPublishAt: !_delayPosting,
           category: _category,
-          stockQuantity: stock.stockQuantity,
-          clearStockQuantity: stock.stockQuantity == null,
-          inStock: stock.inStock,
         );
+        final updatedProduct = applyStockUpdate(edited, stock);
 
         success = await productProvider.updateProduct(
           updatedProduct,
