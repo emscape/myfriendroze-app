@@ -11,6 +11,8 @@ import '../../widgets/custom_text_field.dart';
 import '../../widgets/multiple_image_picker.dart';
 import '../../widgets/selector_box.dart';
 import '../../widgets/product_category_picker.dart';
+import '../../widgets/shipping_estimate_panel.dart';
+import '../../services/shipping_estimate_service.dart';
 import '../../models/product.dart';
 import '../../models/product_category.dart';
 import '../../utils/unit_conversions.dart';
@@ -18,7 +20,10 @@ import '../../utils/unit_conversions.dart';
 class AddProductScreen extends StatefulWidget {
   final Product? productToEdit;
 
-  const AddProductScreen({super.key, this.productToEdit});
+  /// Where "Estimate shipping" gets its quotes; tests pass a fake.
+  final ShippingEstimator? shippingEstimator;
+
+  const AddProductScreen({super.key, this.productToEdit, this.shippingEstimator});
 
   @override
   State<AddProductScreen> createState() => _AddProductScreenState();
@@ -160,6 +165,26 @@ class _AddProductScreenState extends State<AddProductScreen> {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return 0.0;
     return double.tryParse(trimmed) ?? 0.0;
+  }
+
+  /// The weight and shipping box size as entered, or null if any is
+  /// missing -- what "Estimate shipping" quotes.
+  ParcelInput? _parcelFromForm() {
+    final lbs = double.tryParse(_weightLbsController.text.trim()) ?? 0.0;
+    final oz = double.tryParse(_weightOzController.text.trim()) ?? 0.0;
+    final weightGrams = lbsOzToGrams(lbs, oz);
+    final heightIn = _parseOptionalDouble(_shippingBoxHeightController.text);
+    final widthIn = _parseOptionalDouble(_shippingBoxWidthController.text);
+    final depthIn = _parseOptionalDouble(_shippingBoxDepthController.text);
+    if (weightGrams <= 0 || heightIn <= 0 || widthIn <= 0 || depthIn <= 0) {
+      return null;
+    }
+    return ParcelInput(
+      weightGrams: weightGrams,
+      lengthIn: depthIn,
+      widthIn: widthIn,
+      heightIn: heightIn,
+    );
   }
 
   String? _validateOptionalPositive(String? value) {
@@ -573,6 +598,11 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 12),
+              ShippingEstimatePanel(
+                estimator: widget.shippingEstimator ?? ShippingEstimateService(),
+                readParcel: _parcelFromForm,
               ),
               const SizedBox(height: 16),
 
